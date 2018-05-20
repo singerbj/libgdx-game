@@ -155,6 +155,11 @@ public class LibGdxGame extends ApplicationAdapter {
 	}
 
 	private void updateKoala(float deltaTime) {
+		//check for quit command
+		if (Gdx.input.isKeyPressed(Keys.ESCAPE)) {
+			System.exit(0);
+		}		
+		
 		if (deltaTime == 0)
 			return;
 

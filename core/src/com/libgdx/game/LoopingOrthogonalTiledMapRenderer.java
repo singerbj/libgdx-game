@@ -30,33 +30,34 @@ import com.badlogic.gdx.maps.tiled.TiledMapTileLayer;
 import com.badlogic.gdx.maps.tiled.TiledMapTileLayer.Cell;
 import com.badlogic.gdx.maps.tiled.renderers.OrthogonalTiledMapRenderer;
 
-public class LoopingOrthogonalTiledMapRenderer extends OrthogonalTiledMapRenderer{
-	public LoopingOrthogonalTiledMapRenderer (TiledMap map) {
+public class LoopingOrthogonalTiledMapRenderer extends OrthogonalTiledMapRenderer {
+	public LoopingOrthogonalTiledMapRenderer(TiledMap map) {
 		super(map);
 	}
 
-	public LoopingOrthogonalTiledMapRenderer (TiledMap map, Batch batch) {
+	public LoopingOrthogonalTiledMapRenderer(TiledMap map, Batch batch) {
 		super(map, batch);
 	}
 
-	public LoopingOrthogonalTiledMapRenderer (TiledMap map, float unitScale) {
+	public LoopingOrthogonalTiledMapRenderer(TiledMap map, float unitScale) {
 		super(map, unitScale);
 	}
 
-	public LoopingOrthogonalTiledMapRenderer (TiledMap map, float unitScale, Batch batch) {
+	public LoopingOrthogonalTiledMapRenderer(TiledMap map, float unitScale, Batch batch) {
 		super(map, unitScale, batch);
 	}
-	
+
 	@Override
-	public void renderTileLayer (TiledMapTileLayer layer) {
+	public void renderTileLayer(TiledMapTileLayer layer) {
 		renderTileLayerWithXOffset(layer, 0f);
 		renderTileLayerWithXOffset(layer, -layer.getWidth());
 		renderTileLayerWithXOffset(layer, layer.getWidth());
 	}
-	
-	public void renderTileLayerWithXOffset (TiledMapTileLayer layer, float xOffset) {		
+
+	public void renderTileLayerWithXOffset(TiledMapTileLayer layer, float xOffset) {
 		final Color batchColor = batch.getColor();
-		final float color = Color.toFloatBits(batchColor.r, batchColor.g, batchColor.b, batchColor.a * layer.getOpacity());
+		final float color = Color.toFloatBits(batchColor.r, batchColor.g, batchColor.b,
+				batchColor.a * layer.getOpacity());
 
 		final int layerWidth = layer.getWidth();
 		final int layerHeight = layer.getHeight();
@@ -68,13 +69,13 @@ public class LoopingOrthogonalTiledMapRenderer extends OrthogonalTiledMapRendere
 		// offset in tiled is y down, so we flip it
 		final float layerOffsetY = -layer.getRenderOffsetY() * unitScale;
 
-		final int col1 = Math.max(0, (int)((viewBounds.x - layerOffsetX) / layerTileWidth));
+		final int col1 = Math.max(0, (int) ((viewBounds.x - layerOffsetX) / layerTileWidth));
 		final int col2 = Math.min(layerWidth,
-			(int)((viewBounds.x + viewBounds.width + layerTileWidth - layerOffsetX) / layerTileWidth));
+				(int) ((viewBounds.x + viewBounds.width + layerTileWidth - layerOffsetX) / layerTileWidth));
 
-		final int row1 = Math.max(0, (int)((viewBounds.y - layerOffsetY) / layerTileHeight));
+		final int row1 = Math.max(0, (int) ((viewBounds.y - layerOffsetY) / layerTileHeight));
 		final int row2 = Math.min(layerHeight,
-			(int)((viewBounds.y + viewBounds.height + layerTileHeight - layerOffsetY) / layerTileHeight));
+				(int) ((viewBounds.y + viewBounds.height + layerTileHeight - layerOffsetY) / layerTileHeight));
 
 		float y = row2 * layerTileHeight + layerOffsetY;
 		float xStart = col1 * layerTileWidth + layerOffsetX;

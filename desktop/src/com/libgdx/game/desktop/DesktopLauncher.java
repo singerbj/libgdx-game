@@ -5,11 +5,12 @@ import com.badlogic.gdx.backends.lwjgl.LwjglApplicationConfiguration;
 import com.libgdx.game.LibGdxGame;
 
 public class DesktopLauncher {
-	public static void main (String[] arg) {
+	public static void main(String[] arg) {
 		LwjglApplicationConfiguration config = new LwjglApplicationConfiguration();
-	      config.title = "Water Drop";
-	      config.width = 1280;
-	      config.height = 720;
-	      new LwjglApplication(new LibGdxGame(), config);
+		config.title = "Game";
+		config.width = 1920;
+		config.height = 1080;
+		config.fullscreen = true;
+		new LwjglApplication(new LibGdxGame(), config);
 	}
 }

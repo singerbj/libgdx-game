@@ -45,6 +45,8 @@ public class LibGdxGame extends ApplicationAdapter {
 		}
 
 		final Vector2 position = new Vector2();
+		final Vector2 leftPosition = new Vector2();
+		final Vector2 rightPosition = new Vector2();
 		final Vector2 velocity = new Vector2();
 		State state = State.Walking;
 		float stateTime = 0;
@@ -54,7 +56,8 @@ public class LibGdxGame extends ApplicationAdapter {
 	}
 
 	private TiledMap map;
-	private OrthogonalTiledMapRenderer renderer;
+	private float mapWidth;
+	private LoopingOrthogonalTiledMapRenderer renderer;
 	private OrthographicCamera camera;
 	private Texture koalaTexture;
 	private Animation<TextureRegion> stand;
@@ -77,6 +80,7 @@ public class LibGdxGame extends ApplicationAdapter {
 
 	private boolean debug = true;
 	private ShapeRenderer debugRenderer;
+	private Rectangle[] debugTiles;
 
 	@Override
 	public void create() {
@@ -98,7 +102,8 @@ public class LibGdxGame extends ApplicationAdapter {
 		TmxMapLoader.Parameters parameters = new TmxMapLoader.Parameters();
 		parameters.convertObjectToTileSpace = true;
 		map = new TmxMapLoader().load("level1.tmx", parameters);
-		renderer = new OrthogonalTiledMapRenderer(map, 1 / 16f);
+		mapWidth = ((TiledMapTileLayer) map.getLayers().get(0)).getWidth();
+		renderer = new LoopingOrthogonalTiledMapRenderer(map, 1 / 16f);
 
 		// create an orthographic camera, shows us 30x20 units of the world
 		camera = new OrthographicCamera();
@@ -107,7 +112,7 @@ public class LibGdxGame extends ApplicationAdapter {
 
 		// create the Koala we want to move around the world
 		koala = new Koala();
-		koala.position.set(20f, 40f);
+		koala.position.set(3f, 10f);
 
 		debugRenderer = new ShapeRenderer();
 
@@ -244,12 +249,13 @@ public class LibGdxGame extends ApplicationAdapter {
 		koalaRect.x = koala.position.x;
 
 		// if the koala is moving upwards, check the tiles to the top of its
-		// top bounding box edge, otherwise check the ones to the bottom		
+		// top bounding box edge, otherwise check the ones to the bottom
 		startX = (int) (koala.position.x);
 		endX = (int) (koala.position.x + Koala.WIDTH);
-		
-		getLadderTiles(startX, (int) (koala.position.y + koala.velocity.y), endX, (int) (koala.position.y + Koala.HEIGHT + koala.velocity.y), ladderTiles);
-		
+
+		getLadderTiles(startX, (int) (koala.position.y + koala.velocity.y), endX,
+				(int) (koala.position.y + Koala.HEIGHT + koala.velocity.y), ladderTiles);
+
 		koala.onLadder = false;
 		for (Rectangle tile : ladderTiles) {
 			if (koalaRect.overlaps(tile)) {
@@ -260,7 +266,7 @@ public class LibGdxGame extends ApplicationAdapter {
 			}
 		}
 
-		if (koala.onLadder == true) {
+		if (koala.onLadder) {
 			if (Gdx.input.isKeyPressed(Keys.W)) {
 				koala.velocity.y += 1;
 				if (koala.velocity.y > (Koala.MAX_VELOCITY * 0.02f)) {
@@ -275,13 +281,13 @@ public class LibGdxGame extends ApplicationAdapter {
 				}
 			}
 		}
-		
+
 		if (koala.velocity.y > 0) {
 			startY = endY = (int) (koala.position.y + Koala.HEIGHT + koala.velocity.y);
 		} else {
 			startY = endY = (int) (koala.position.y + koala.velocity.y);
 		}
-		
+
 		getTiles(startX, startY, endX, endY, floorTiles);
 		koalaRect.y += koala.velocity.y;
 		for (Rectangle tile : floorTiles) {
@@ -309,8 +315,17 @@ public class LibGdxGame extends ApplicationAdapter {
 		// Apply damping to the velocity on the x-axis so we don't
 		// walk infinitely once a key was pressed
 		koala.velocity.x *= Koala.DAMPING;
+		
+		//update the koalas alternate positions
+		if(koala.position.x < 0) {
+			koala.position.x = koala.rightPosition.x;			
+		}else if(koala.position.x > mapWidth) {
+			koala.position.x = koala.leftPosition.x;			
+		}
+		koala.rightPosition.x = koala.position.x + mapWidth;
+		koala.leftPosition.x = koala.position.x - mapWidth;
 	}
-
+	
 	private void getTiles(int startX, int startY, int endX, int endY, Array<Rectangle> floorTiles) {
 		TiledMapTileLayer wallsLayer = (TiledMapTileLayer) map.getLayers().get("walls");
 		rectPool.freeAll(floorTiles);
@@ -321,7 +336,19 @@ public class LibGdxGame extends ApplicationAdapter {
 				if (cell != null) {
 					Rectangle rect = rectPool.obtain();
 					rect.set(x, y, 1, 1);
-					floorTiles.add(rect);
+					floorTiles.add(rect);					
+				}
+				cell = wallsLayer.getCell(x + wallsLayer.getWidth(), y);
+				if (cell != null) {
+					Rectangle rect = rectPool.obtain();
+					rect.set(x, y, 1, 1);
+					floorTiles.add(rect);					
+				}
+				cell = wallsLayer.getCell(x - wallsLayer.getWidth(), y);
+				if (cell != null) {
+					Rectangle rect = rectPool.obtain();
+					rect.set(x, y, 1, 1);
+					floorTiles.add(rect);					
 				}
 			}
 		}
@@ -338,6 +365,18 @@ public class LibGdxGame extends ApplicationAdapter {
 					Rectangle rect = rectPool.obtain();
 					rect.set(x, y, 1, 1);
 					ladderTiles.add(rect);
+				}
+				cell = ladderLayer.getCell(x + ladderLayer.getWidth(), y);
+				if (cell != null) {
+					Rectangle rect = rectPool.obtain();
+					rect.set(x, y, 1, 1);
+					ladderTiles.add(rect);					
+				}
+				cell = ladderLayer.getCell(x - ladderLayer.getWidth(), y);
+				if (cell != null) {
+					Rectangle rect = rectPool.obtain();
+					rect.set(x, y, 1, 1);
+					ladderTiles.add(rect);					
 				}
 			}
 		}
@@ -365,8 +404,12 @@ public class LibGdxGame extends ApplicationAdapter {
 		batch.begin();
 		if (koala.facesRight) {
 			batch.draw(frame, koala.position.x, koala.position.y, Koala.WIDTH, Koala.HEIGHT);
+			batch.draw(frame, koala.leftPosition.x, koala.position.y, Koala.WIDTH, Koala.HEIGHT);
+			batch.draw(frame, koala.rightPosition.x, koala.position.y, Koala.WIDTH, Koala.HEIGHT);			
 		} else {
 			batch.draw(frame, koala.position.x + Koala.WIDTH, koala.position.y, -Koala.WIDTH, Koala.HEIGHT);
+			batch.draw(frame, koala.leftPosition.x + Koala.WIDTH, koala.position.y, -Koala.WIDTH, Koala.HEIGHT);
+			batch.draw(frame, koala.rightPosition.x + Koala.WIDTH, koala.position.y, -Koala.WIDTH, Koala.HEIGHT);
 		}
 		batch.end();
 	}
@@ -400,6 +443,16 @@ public class LibGdxGame extends ApplicationAdapter {
 				}
 			}
 		}
+
+		debugRenderer.setColor(Color.PINK);
+		if (debugTiles != null) {
+			for (int i = 0; i <= debugTiles.length - 1; i++) {
+				Rectangle tile = debugTiles[i];
+				if (camera.frustum.boundsInFrustum(tile.x + 0.5f, tile.y + 0.5f, 0, 1, 1, 0))
+					debugRenderer.rect(tile.x, tile.y, 1, 1);
+			}
+		}
+
 		debugRenderer.end();
 	}
 

@@ -101,9 +101,9 @@ public class LibGdxGame extends ApplicationAdapter {
 		// load the map, set the unit scale to 1/16 (1 unit == 16 pixels)
 		TmxMapLoader.Parameters parameters = new TmxMapLoader.Parameters();
 		parameters.convertObjectToTileSpace = true;
-		map = new TmxMapLoader().load("level1.tmx", parameters);
+		map = new TmxMapLoader().load("kenney.tmx", parameters);
 		mapWidth = ((TiledMapTileLayer) map.getLayers().get(0)).getWidth();
-		renderer = new LoopingOrthogonalTiledMapRenderer(map, 1 / 16f);
+		renderer = new LoopingOrthogonalTiledMapRenderer(map, 1 / 70f);
 
 		// create an orthographic camera, shows us 30x20 units of the world
 		camera = new OrthographicCamera();

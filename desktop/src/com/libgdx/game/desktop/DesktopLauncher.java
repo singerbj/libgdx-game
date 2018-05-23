@@ -11,6 +11,9 @@ public class DesktopLauncher {
 		config.width = 1920;
 		config.height = 1080;
 		config.fullscreen = true;
+		config.vSyncEnabled = false; // Setting to false disables vertical sync
+		config.foregroundFPS = 240; // Setting to 0 disables foreground fps throttling
+		config.backgroundFPS = 240; // Setting to 0 disables background fps throttling
 		new LwjglApplication(new LibGdxGame(), config);
 	}
 }

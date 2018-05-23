@@ -37,7 +37,7 @@ public class LibGdxGame extends ApplicationAdapter {
 		static float WIDTH;
 		static float HEIGHT;
 		static float MAX_VELOCITY = 5f;
-		static float JUMP_VELOCITY = 25f;
+		static float JUMP_VELOCITY = 20;
 		static float DAMPING = 0.87f;
 
 		enum State {
@@ -76,7 +76,7 @@ public class LibGdxGame extends ApplicationAdapter {
 	private BitmapFont font;
 	private SpriteBatch batch;
 
-	private static final float GRAVITY = -2.5f;
+	private static final float GRAVITY = -35f;
 
 	private boolean debug = true;
 	private ShapeRenderer debugRenderer;
@@ -112,7 +112,7 @@ public class LibGdxGame extends ApplicationAdapter {
 
 		// create the Koala we want to move around the world
 		koala = new Koala();
-		koala.position.set(3f, 10f);
+		koala.position.set(20f, 10f);
 
 		debugRenderer = new ShapeRenderer();
 
@@ -160,11 +160,11 @@ public class LibGdxGame extends ApplicationAdapter {
 			System.exit(0);
 		}		
 		
-		if (deltaTime == 0)
-			return;
-
-		if (deltaTime > 0.1f)
-			deltaTime = 0.1f;
+//		if (deltaTime == 0)
+//			return;
+//
+//		if (deltaTime > 0.1f)
+//			deltaTime = 0.1f;
 
 		koala.stateTime += deltaTime;
 
@@ -174,9 +174,7 @@ public class LibGdxGame extends ApplicationAdapter {
 				koala.velocity.y += Koala.JUMP_VELOCITY;
 				koala.state = Koala.State.Jumping;
 				koala.grounded = false;
-			} else {
-				koala.velocity.y -= GRAVITY / 1.75;
-			}
+			} 
 		}
 
 		float speedMultiplier = 1f;
@@ -208,7 +206,7 @@ public class LibGdxGame extends ApplicationAdapter {
 			debug = !debug;
 
 		// apply gravity if we are falling
-		koala.velocity.add(0, GRAVITY);
+		koala.velocity.add(0, GRAVITY * deltaTime);
 		// set max falling speed
 		if (koala.velocity.y < -Koala.MAX_VELOCITY * 5f) {
 			koala.velocity.y = -Koala.MAX_VELOCITY * 5f;
@@ -273,16 +271,16 @@ public class LibGdxGame extends ApplicationAdapter {
 
 		if (koala.onLadder) {
 			if (Gdx.input.isKeyPressed(Keys.W)) {
-				koala.velocity.y += 1;
-				if (koala.velocity.y > (Koala.MAX_VELOCITY * 0.02f)) {
-					koala.velocity.y = (Koala.MAX_VELOCITY * 0.02f);
+				koala.velocity.y += 5 * deltaTime;
+				if (koala.velocity.y > Koala.MAX_VELOCITY) {
+					koala.velocity.y = Koala.MAX_VELOCITY;
 				}
 			}
 
 			if (Gdx.input.isKeyPressed(Keys.S)) {
-				koala.velocity.y -= 1;
-				if (koala.velocity.y < -(Koala.MAX_VELOCITY * 0.02f)) {
-					koala.velocity.y = -(Koala.MAX_VELOCITY * 0.02f);
+				koala.velocity.y -= 5 * deltaTime;
+				if (koala.velocity.y < -Koala.MAX_VELOCITY) {
+					koala.velocity.y = -Koala.MAX_VELOCITY;
 				}
 			}
 		}

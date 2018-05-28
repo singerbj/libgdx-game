@@ -27,17 +27,22 @@ import com.badlogic.gdx.maps.tiled.renderers.OrthogonalTiledMapRenderer;
 import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.math.Vector2;
+import com.badlogic.gdx.math.Vector3;
+import com.badlogic.gdx.math.collision.Ray;
 import com.badlogic.gdx.utils.Array;
 import com.badlogic.gdx.utils.Pool;
 import com.badlogic.gdx.utils.TimeUtils;
 import com.libgdx.entities.Player;
+import com.libgdx.helpers.DebugHelper;
+import com.libgdx.helpers.RayCastHelper;
 
 public class LibGdxGame extends ApplicationAdapter {
 	private TiledMap map;
 	private float mapWidth;
+	private float mapHeight;
 	private LoopingOrthogonalTiledMapRenderer renderer;
 	private OrthographicCamera camera;
-	private Texture koalaTexture;
+	private Texture playerTexture;
 	private Animation<TextureRegion> stand;
 	private Animation<TextureRegion> walk;
 	private Animation<TextureRegion> jump;
@@ -48,8 +53,6 @@ public class LibGdxGame extends ApplicationAdapter {
 			return new Rectangle();
 		}
 	};
-	private Array<Rectangle> floorTiles = new Array<Rectangle>();
-	private Array<Rectangle> ladderTiles = new Array<Rectangle>();
 
 	private BitmapFont font;
 	private SpriteBatch batch;
@@ -57,17 +60,19 @@ public class LibGdxGame extends ApplicationAdapter {
 	private static final float GRAVITY = -45f;
 
 	private boolean debug = true;
-	private ShapeRenderer debugRenderer;
-	private Rectangle[] debugTiles;
+	private Array<Rectangle> debugTiles;
+	private DebugHelper debugHelper;
+	ShapeRenderer shapeRenderer;
+	private RayCastHelper rayCastHelper;
 
 	@Override
 	public void create() {
-		// load the koala frames, split them, and assign them to Animations
-		koalaTexture = new Texture("koalio.png");
-		TextureRegion[] regions = TextureRegion.split(koalaTexture, 18, 26)[0];
-		stand = new Animation(0, regions[0]);
-		jump = new Animation(0, regions[1]);
-		walk = new Animation(0.15f, regions[2], regions[3], regions[4]);
+		// load the player frames, split them, and assign them to Animations
+		playerTexture = new Texture("koalio.png");
+		TextureRegion[] regions = TextureRegion.split(playerTexture, 18, 26)[0];
+		stand = new Animation<TextureRegion>(0, regions[0]);
+		jump = new Animation<TextureRegion>(0, regions[1]);
+		walk = new Animation<TextureRegion>(0.15f, regions[2], regions[3], regions[4]);
 		walk.setPlayMode(Animation.PlayMode.LOOP_PINGPONG);
 
 		// load the map, set the unit scale to 1/16 (1 unit == 16 pixels)
@@ -75,6 +80,7 @@ public class LibGdxGame extends ApplicationAdapter {
 		parameters.convertObjectToTileSpace = true;
 		map = new TmxMapLoader().load("kenney.tmx", parameters);
 		mapWidth = ((TiledMapTileLayer) map.getLayers().get(0)).getWidth();
+		mapHeight = ((TiledMapTileLayer) map.getLayers().get(0)).getHeight();
 		renderer = new LoopingOrthogonalTiledMapRenderer(map, 1 / 70f);
 
 		// create an orthographic camera, shows us 30x20 units of the world
@@ -82,14 +88,17 @@ public class LibGdxGame extends ApplicationAdapter {
 		camera.setToOrtho(false, 60f, 40f);
 		camera.update();
 
-		// create the Koala we want to move around the world
+		// create the Player we want to move around the world
 		player = new Player(1 / 16f * regions[0].getRegionWidth(), 1 / 16f * regions[0].getRegionHeight());
 		player.position.set(20f, 10f);
 
-		debugRenderer = new ShapeRenderer();
-
 		font = new BitmapFont();
 		batch = new SpriteBatch();
+
+		rayCastHelper = new RayCastHelper();
+		shapeRenderer = new ShapeRenderer();
+		debugTiles = new Array<Rectangle>();
+		debugHelper = new DebugHelper(shapeRenderer, camera, debugTiles, player, map);
 	}
 
 	@Override
@@ -101,12 +110,12 @@ public class LibGdxGame extends ApplicationAdapter {
 		// get the delta time
 		float deltaTime = Gdx.graphics.getDeltaTime();
 
-		// update the koala (process input, collision detection, position update)
-		updateKoala(deltaTime);
+		// update the player (process input, collision detection, position update)
+		updatePlayer(deltaTime);
 
-		// let the camera follow the koala, x-axis only
-		camera.position.x = player.position.x;
-		camera.position.y = player.position.y;
+		// let the camera follow the player, x-axis only
+		camera.position.x = player.position.x + (Player.WIDTH / 2);
+		camera.position.y = player.position.y + (Player.HEIGHT / 2);
 		camera.update();
 
 		// set the TiledMapRenderer view based on what the
@@ -114,23 +123,23 @@ public class LibGdxGame extends ApplicationAdapter {
 		renderer.setView(camera);
 		renderer.render();
 
-		// render the koala
-		renderKoala(deltaTime);
+		// render the player
+		renderPlayer(deltaTime);
 
 		// render debug rectangles
 		if (debug) {
-			renderDebug();
+			debugHelper.renderDebug();
 			batch.begin();
 			font.draw(batch, (int) Gdx.graphics.getFramesPerSecond() + " fps", 3, Gdx.graphics.getHeight() - 3);
 			batch.end();
 		}
 	}
 
-	private void updateKoala(float deltaTime) {
-		//check for quit command
+	private void updatePlayer(float deltaTime) {
+		// check for quit command
 		if (Gdx.input.isKeyPressed(Keys.ESCAPE)) {
 			System.exit(0);
-		}		
+		}
 
 		player.stateTime += deltaTime;
 
@@ -140,7 +149,37 @@ public class LibGdxGame extends ApplicationAdapter {
 				player.velocity.y += Player.JUMP_VELOCITY;
 				player.state = Player.State.Jumping;
 				player.grounded = false;
-			} 
+			}
+		}
+
+		if (Gdx.input.isTouched()) {
+			Collision collision = null;
+			for(Vector2 position : player.getPositions()) {
+				if(collision != null) {
+					break;
+				}
+				shapeRenderer.setProjectionMatrix(camera.combined);
+				shapeRenderer.begin(ShapeType.Line);
+				shapeRenderer.setColor(Color.BLACK);
+				
+				float playerCenterX = position.x + (Player.WIDTH / 2);
+				float playerCenterY = position.y + (Player.HEIGHT / 2);
+				Vector2 src = new Vector2(playerCenterX, playerCenterY);
+				Vector3 literalDest = new Vector3(Gdx.input.getX(), Gdx.input.getY(), 0);
+				camera.unproject(literalDest);
+				Vector2 dest = new Vector2(literalDest.x + (position.x - player.position.x), literalDest.y);
+				float theta = (float) (180.0 / Math.PI * Math.atan2(playerCenterX - dest.x, playerCenterY - dest.y));
+				dest = new Vector2(playerCenterX, playerCenterY).add(new Vector2(10, 0).rotate(-theta - 90));
+				
+				shapeRenderer.line(src, dest);
+				shapeRenderer.end();
+				
+				collision = rayCastHelper.rayTest(src, dest, 100, getTiles("walls", 0, 0, (int) mapWidth, (int) mapHeight));
+				if(collision != null) {
+					debugTiles.add(collision.getCollideableObject());
+				}
+			}
+
 		}
 
 		float speedMultiplier = 1f;
@@ -168,8 +207,9 @@ public class LibGdxGame extends ApplicationAdapter {
 			player.facesRight = true;
 		}
 
-		if (Gdx.input.isKeyJustPressed(Keys.B))
+		if (Gdx.input.isKeyJustPressed(Keys.B)) {
 			debug = !debug;
+		}
 
 		// apply gravity if we are falling
 		player.velocity.add(0, GRAVITY * deltaTime);
@@ -194,10 +234,10 @@ public class LibGdxGame extends ApplicationAdapter {
 		player.velocity.scl(deltaTime);
 
 		// perform collision detection & response, on each axis, separately
-		// if the koala is moving right, check the tiles to the right of it's
+		// if the player is moving right, check the tiles to the right of it's
 		// right bounding box edge, otherwise check the ones to the left
-		Rectangle koalaRect = rectPool.obtain();
-		koalaRect.set(player.position.x, player.position.y, Player.WIDTH, Player.HEIGHT);
+		Rectangle playerRect = rectPool.obtain();
+		playerRect.set(player.position.x, player.position.y, Player.WIDTH, Player.HEIGHT);
 		int startX, startY, endX, endY;
 		if (player.velocity.x > 0) {
 			startX = endX = (int) (player.position.x + Player.WIDTH + player.velocity.x);
@@ -206,28 +246,31 @@ public class LibGdxGame extends ApplicationAdapter {
 		}
 		startY = (int) (player.position.y);
 		endY = (int) (player.position.y + Player.HEIGHT);
-		getTiles("walls", startX, startY, endX, endY, floorTiles);
-		getTiles("ladders", startX, startY, endX, endY, ladderTiles);
-		koalaRect.x += player.velocity.x;
+
+		Array<Rectangle> floorTiles = new Array<Rectangle>();
+		Array<Rectangle> ladderTiles = new Array<Rectangle>();
+		floorTiles = getTiles("walls", startX, startY, endX, endY);
+		ladderTiles = getTiles("ladders", startX, startY, endX, endY);
+		playerRect.x += player.velocity.x;
 		for (Rectangle tile : floorTiles) {
-			if (koalaRect.overlaps(tile)) {
+			if (playerRect.overlaps(tile)) {
 				player.velocity.x = 0;
 				break;
 			}
 		}
-		koalaRect.x = player.position.x;
+		playerRect.x = player.position.x;
 
-		// if the koala is moving upwards, check the tiles to the top of its
+		// if the player is moving upwards, check the tiles to the top of its
 		// top bounding box edge, otherwise check the ones to the bottom
 		startX = (int) (player.position.x);
 		endX = (int) (player.position.x + Player.WIDTH);
 
-		getTiles("ladders", startX, (int) (player.position.y + player.velocity.y), endX,
-				(int) (player.position.y + Player.HEIGHT + player.velocity.y), ladderTiles);
+		ladderTiles = getTiles("ladders", startX, (int) (player.position.y + player.velocity.y), endX,
+				(int) (player.position.y + Player.HEIGHT + player.velocity.y));
 
 		player.onLadder = false;
 		for (Rectangle tile : ladderTiles) {
-			if (koalaRect.overlaps(tile)) {
+			if (playerRect.overlaps(tile)) {
 				player.onLadder = true;
 				player.state = Player.State.Standing;
 				player.velocity.y = 0;
@@ -257,11 +300,11 @@ public class LibGdxGame extends ApplicationAdapter {
 			startY = endY = (int) (player.position.y + player.velocity.y);
 		}
 
-		getTiles("walls", startX, startY, endX, endY, floorTiles);
-		koalaRect.y += player.velocity.y;
+		floorTiles = getTiles("walls", startX, startY, endX, endY);
+		playerRect.y += player.velocity.y;
 		for (Rectangle tile : floorTiles) {
-			if (koalaRect.overlaps(tile)) {
-				// we actually reset the koala y-position here
+			if (playerRect.overlaps(tile)) {
+				// we actually reset the player y-position here
 				// so it is just below/above the tile we collided with
 				// this removes bouncing :)
 				if (player.velocity.y <= 0) {
@@ -274,7 +317,7 @@ public class LibGdxGame extends ApplicationAdapter {
 			}
 		}
 
-		rectPool.free(koalaRect);
+		rectPool.free(playerRect);
 
 		// unscale the velocity by the inverse delta time and set
 		// the latest position
@@ -284,18 +327,21 @@ public class LibGdxGame extends ApplicationAdapter {
 		// Apply damping to the velocity on the x-axis so we don't
 		// walk infinitely once a key was pressed
 		player.velocity.x *= Player.DAMPING;
-		
-		//update the koalas alternate positions
-		if(player.position.x < 0) {
-			player.position.x = player.rightPosition.x;			
-		}else if(player.position.x > mapWidth) {
-			player.position.x = player.leftPosition.x;			
+
+		// update the players alternate positions
+		if (player.position.x < 0) {
+			player.position.x = player.rightPosition.x;
+		} else if (player.position.x > mapWidth) {
+			player.position.x = player.leftPosition.x;
 		}
 		player.rightPosition.x = player.position.x + mapWidth;
 		player.leftPosition.x = player.position.x - mapWidth;
+		player.rightPosition.y = player.position.y;
+		player.leftPosition.y = player.position.y;
 	}
-	
-	private void getTiles(String layerName, int startX, int startY, int endX, int endY, Array<Rectangle> tiles) {
+
+	private Array<Rectangle> getTiles(String layerName, int startX, int startY, int endX, int endY) {
+		Array<Rectangle> tiles = new Array<Rectangle>();
 		TiledMapTileLayer layer = (TiledMapTileLayer) map.getLayers().get(layerName);
 		rectPool.freeAll(tiles);
 		tiles.clear();
@@ -305,26 +351,27 @@ public class LibGdxGame extends ApplicationAdapter {
 				if (cell != null) {
 					Rectangle rect = rectPool.obtain();
 					rect.set(x, y, 1, 1);
-					tiles.add(rect);					
+					tiles.add(rect);
 				}
-				cell = layer.getCell(x + layer.getWidth(), y);
+				cell = layer.getCell(x + layer.getWidth() - 1, y);
 				if (cell != null) {
 					Rectangle rect = rectPool.obtain();
 					rect.set(x, y, 1, 1);
-					tiles.add(rect);					
+					tiles.add(rect);
 				}
-				cell = layer.getCell(x - layer.getWidth(), y);
+				cell = layer.getCell(x - layer.getWidth() - 1, y);
 				if (cell != null) {
 					Rectangle rect = rectPool.obtain();
 					rect.set(x, y, 1, 1);
-					tiles.add(rect);					
+					tiles.add(rect);
 				}
 			}
 		}
-	}	
+		return tiles;
+	}
 
-	private void renderKoala(float deltaTime) {
-		// based on the koala state, get the animation frame
+	private void renderPlayer(float deltaTime) {
+		// based on the player state, get the animation frame
 		TextureRegion frame = null;
 		switch (player.state) {
 		case Standing:
@@ -338,63 +385,21 @@ public class LibGdxGame extends ApplicationAdapter {
 			break;
 		}
 
-		// draw the koala, depending on the current velocity
-		// on the x-axis, draw the koala facing either right
+		// draw the player, depending on the current velocity
+		// on the x-axis, draw the player facing either right
 		// or left
 		Batch batch = renderer.getBatch();
 		batch.begin();
 		if (player.facesRight) {
 			batch.draw(frame, player.position.x, player.position.y, Player.WIDTH, Player.HEIGHT);
 			batch.draw(frame, player.leftPosition.x, player.position.y, Player.WIDTH, Player.HEIGHT);
-			batch.draw(frame, player.rightPosition.x, player.position.y, Player.WIDTH, Player.HEIGHT);			
+			batch.draw(frame, player.rightPosition.x, player.position.y, Player.WIDTH, Player.HEIGHT);
 		} else {
 			batch.draw(frame, player.position.x + Player.WIDTH, player.position.y, -Player.WIDTH, Player.HEIGHT);
 			batch.draw(frame, player.leftPosition.x + Player.WIDTH, player.position.y, -Player.WIDTH, Player.HEIGHT);
 			batch.draw(frame, player.rightPosition.x + Player.WIDTH, player.position.y, -Player.WIDTH, Player.HEIGHT);
 		}
 		batch.end();
-	}
-
-	private void renderDebug() {
-		debugRenderer.setProjectionMatrix(camera.combined);
-		debugRenderer.begin(ShapeType.Line);
-
-		debugRenderer.setColor(Color.RED);
-		debugRenderer.rect(player.position.x, player.position.y, Player.WIDTH, Player.HEIGHT);
-
-		debugRenderer.setColor(Color.YELLOW);
-		TiledMapTileLayer wallsLayer = (TiledMapTileLayer) map.getLayers().get("walls");
-		for (int y = 0; y <= wallsLayer.getHeight(); y++) {
-			for (int x = 0; x <= wallsLayer.getWidth(); x++) {
-				Cell cell = wallsLayer.getCell(x, y);
-				if (cell != null) {
-					if (camera.frustum.boundsInFrustum(x + 0.5f, y + 0.5f, 0, 1, 1, 0))
-						debugRenderer.rect(x, y, 1, 1);
-				}
-			}
-		}
-		debugRenderer.setColor(Color.PURPLE);
-		TiledMapTileLayer laddersLayer = (TiledMapTileLayer) map.getLayers().get("ladders");
-		for (int y = 0; y <= laddersLayer.getHeight(); y++) {
-			for (int x = 0; x <= laddersLayer.getWidth(); x++) {
-				Cell cell = laddersLayer.getCell(x, y);
-				if (cell != null) {
-					if (camera.frustum.boundsInFrustum(x + 0.5f, y + 0.5f, 0, 1, 1, 0))
-						debugRenderer.rect(x, y, 1, 1);
-				}
-			}
-		}
-
-		debugRenderer.setColor(Color.PINK);
-		if (debugTiles != null) {
-			for (int i = 0; i <= debugTiles.length - 1; i++) {
-				Rectangle tile = debugTiles[i];
-				if (camera.frustum.boundsInFrustum(tile.x + 0.5f, tile.y + 0.5f, 0, 1, 1, 0))
-					debugRenderer.rect(tile.x, tile.y, 1, 1);
-			}
-		}
-
-		debugRenderer.end();
 	}
 
 	@Override

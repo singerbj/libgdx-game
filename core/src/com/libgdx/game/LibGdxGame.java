@@ -160,7 +160,6 @@ public class LibGdxGame extends ApplicationAdapter {
 				}
 				shapeRenderer.setProjectionMatrix(camera.combined);
 				shapeRenderer.begin(ShapeType.Line);
-				shapeRenderer.setColor(Color.BLACK);
 				
 				float playerCenterX = position.x + (Player.WIDTH / 2);
 				float playerCenterY = position.y + (Player.HEIGHT / 2);
@@ -171,7 +170,7 @@ public class LibGdxGame extends ApplicationAdapter {
 				float theta = (float) (180.0 / Math.PI * Math.atan2(playerCenterX - dest.x, playerCenterY - dest.y));
 				dest = new Vector2(playerCenterX, playerCenterY).add(new Vector2(10, 0).rotate(-theta - 90));
 				
-				shapeRenderer.line(src, dest);
+				shapeRenderer.line(src.x, src.y, dest.x, dest.y, Color.WHITE, new Color(0f, 0f, 0f, 0f));
 				shapeRenderer.end();
 				
 				collision = rayCastHelper.rayTest(src, dest, 100, getTiles("walls", 0, 0, (int) mapWidth, (int) mapHeight));

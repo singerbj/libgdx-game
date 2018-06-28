@@ -78,10 +78,11 @@ public class LibGdxGame extends ApplicationAdapter {
 		// load the map, set the unit scale to 1/16 (1 unit == 16 pixels)
 		TmxMapLoader.Parameters parameters = new TmxMapLoader.Parameters();
 		parameters.convertObjectToTileSpace = true;
-		map = new TmxMapLoader().load("kenney.tmx", parameters);
+		map = new TmxMapLoader().load("level1.tmx", parameters);
+//		map = new TmxMapLoader().load("small.tmx", parameters);
 		mapWidth = ((TiledMapTileLayer) map.getLayers().get(0)).getWidth();
 		mapHeight = ((TiledMapTileLayer) map.getLayers().get(0)).getHeight();
-		renderer = new LoopingOrthogonalTiledMapRenderer(map, 1 / 70f);
+		renderer = new LoopingOrthogonalTiledMapRenderer(map, 1 / 16f);
 
 		// create an orthographic camera, shows us 30x20 units of the world
 		camera = new OrthographicCamera();
@@ -151,34 +152,42 @@ public class LibGdxGame extends ApplicationAdapter {
 				player.grounded = false;
 			}
 		}
+		
+		player.gun.updateReloadState(TimeUtils.millis());
+		if (Gdx.input.isKeyPressed(Keys.R)) {
+			player.gun.reload(TimeUtils.millis());
+		}
 
 		if (Gdx.input.isTouched()) {
-			Collision collision = null;
-			for(Vector2 position : player.getPositions()) {
-				if(collision != null) {
-					break;
-				}
-				shapeRenderer.setProjectionMatrix(camera.combined);
-				shapeRenderer.begin(ShapeType.Line);
-				
-				float playerCenterX = position.x + (Player.WIDTH / 2);
-				float playerCenterY = position.y + (Player.HEIGHT / 2);
-				Vector2 src = new Vector2(playerCenterX, playerCenterY);
-				Vector3 literalDest = new Vector3(Gdx.input.getX(), Gdx.input.getY(), 0);
-				camera.unproject(literalDest);
-				Vector2 dest = new Vector2(literalDest.x + (position.x - player.position.x), literalDest.y);
-				float theta = (float) (180.0 / Math.PI * Math.atan2(playerCenterX - dest.x, playerCenterY - dest.y));
-				dest = new Vector2(playerCenterX, playerCenterY).add(new Vector2(10, 0).rotate(-theta - 90));
-				
-				shapeRenderer.line(src.x, src.y, dest.x, dest.y, Color.WHITE, new Color(0f, 0f, 0f, 0f));
-				shapeRenderer.end();
-				
-				collision = rayCastHelper.rayTest(src, dest, 100, getTiles("walls", 0, 0, (int) mapWidth, (int) mapHeight));
-				if(collision != null) {
-					debugTiles.add(collision.getCollideableObject());
+			if(player.gun.fireGun(TimeUtils.millis())) {
+				Collision collision = null;
+				for(Vector2 position : player.getPositions()) {
+					if(collision != null) {
+						break;
+					}
+					shapeRenderer.setProjectionMatrix(camera.combined);
+					shapeRenderer.begin(ShapeType.Line);
+					shapeRenderer.setColor(Color.BLACK);
+					
+					float playerCenterX = position.x + (Player.WIDTH / 2);
+					float playerCenterY = position.y + (Player.HEIGHT / 2);
+					Vector2 src = new Vector2(playerCenterX, playerCenterY);
+					Vector3 literalDest = new Vector3(Gdx.input.getX(), Gdx.input.getY(), 0);
+					camera.unproject(literalDest);
+					Vector2 dest = new Vector2(literalDest.x + (position.x - player.position.x), literalDest.y);
+					float theta = (float) (180.0 / Math.PI * Math.atan2(playerCenterX - dest.x, playerCenterY - dest.y));
+					dest = new Vector2(playerCenterX, playerCenterY).add(new Vector2(20, 0).rotate(-theta - 90));
+					
+					collision = rayCastHelper.rayTest(src, dest, getTiles("walls", 0, 0, (int) mapWidth, (int) mapHeight));
+					if(collision != null) {
+						debugTiles.add(collision.getCollideableObject());
+						shapeRenderer.line(src, collision.getCollisionPoint());
+					}else{
+						shapeRenderer.line(src, dest);
+					}
+					shapeRenderer.end();
 				}
 			}
-
 		}
 
 		float speedMultiplier = 1f;

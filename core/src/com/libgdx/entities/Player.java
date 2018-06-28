@@ -25,6 +25,7 @@ public class Player {
 	public boolean facesRight = true;
 	public boolean grounded = false;
 	public boolean onLadder = false;
+	public Gun gun = new Gun();
 	
 	public Player (float width, float height) {
 		Player.WIDTH = width;

@@ -14,18 +14,14 @@ import com.libgdx.game.Collision;
 public class RayCastHelper {
 	Intersector intersector = new Intersector();
 
-	public Collision rayTest(Vector2 source, Vector2 dest, float shotRange, Array<Rectangle> array) {
+	public Collision rayTest(Vector2 source, Vector2 dest, Array<Rectangle> array) {
 		// check all rects to see which intersect
 		HashMap<Segment, Rectangle> vectorRectMap = new HashMap<Segment, Rectangle>();
 		for (Rectangle r : array) {
 			if (Intersector.intersectSegmentPolygon(source, dest, rectangleToPolygon(r))) {
 				vectorRectMap.put(new Segment(new Vector3(r.x, r.y, 0), new Vector3(r.x + r.width, r.y, 0)), r);
-				vectorRectMap.put(
-						new Segment(new Vector3(r.x + r.width, r.y, 0), new Vector3(r.x + r.width, r.y + r.height, 0)),
-						r);
-				vectorRectMap.put(
-						new Segment(new Vector3(r.x + r.width, r.y + r.height, 0), new Vector3(r.x, r.y + r.height, 0)),
-						r);
+				vectorRectMap.put(new Segment(new Vector3(r.x + r.width, r.y, 0), new Vector3(r.x + r.width, r.y + r.height, 0)), r);
+				vectorRectMap.put(new Segment(new Vector3(r.x + r.width, r.y + r.height, 0), new Vector3(r.x, r.y + r.height, 0)), r);
 				vectorRectMap.put(new Segment(new Vector3(r.x, r.y + r.height, 0), new Vector3(r.x, r.y, 0)), r);
 			}
 		}
@@ -35,8 +31,9 @@ public class RayCastHelper {
 		Vector2 bestIntersection = null;
 		float bestDistance = -1;
 		float tempDistance = -1;
-		Vector2 tempIntersection = new Vector2();
+		Vector2 tempIntersection;
 		for (Segment key : vectorRectMap.keySet()) {
+			tempIntersection = new Vector2();
 			if (Intersector.intersectSegments(source.x, source.y, dest.x, dest.y, key.a.x, key.a.y, key.b.x, key.b.y,
 					tempIntersection)) {
 				tempDistance = distance(new Vector2(source.x, source.y), tempIntersection);
@@ -56,8 +53,16 @@ public class RayCastHelper {
 	}
 
 	private Polygon rectangleToPolygon(Rectangle rect) {
-		float[] points = { rect.x, rect.y, rect.x + rect.width, rect.y, rect.x + rect.width, rect.y + rect.height,
-				rect.x, rect.y + rect.height };
+		float[] points = { 
+				rect.x, 
+				rect.y, 
+				rect.x + rect.width, 
+				rect.y, 
+				rect.x + rect.width, 
+				rect.y + rect.height,
+				rect.x, 
+				rect.y + rect.height
+			};
 		return new Polygon(points);
 	}
 

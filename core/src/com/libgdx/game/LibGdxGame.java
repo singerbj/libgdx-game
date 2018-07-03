@@ -15,8 +15,10 @@ import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.Animation;
 import com.badlogic.gdx.graphics.g2d.Batch;
 import com.badlogic.gdx.graphics.g2d.BitmapFont;
+import com.badlogic.gdx.graphics.g2d.Sprite;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
+import com.badlogic.gdx.graphics.g3d.attributes.PointLightsAttribute;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer.ShapeType;
 import com.badlogic.gdx.maps.tiled.TiledMap;
@@ -43,6 +45,8 @@ public class LibGdxGame extends ApplicationAdapter {
 	private LoopingOrthogonalTiledMapRenderer renderer;
 	private OrthographicCamera camera;
 	private Texture playerTexture;
+	private Texture ak;
+	private Sprite akSprite;
 	private Animation<TextureRegion> stand;
 	private Animation<TextureRegion> walk;
 	private Animation<TextureRegion> jump;
@@ -69,6 +73,8 @@ public class LibGdxGame extends ApplicationAdapter {
 	public void create() {
 		// load the player frames, split them, and assign them to Animations
 		playerTexture = new Texture("koalio.png");
+		ak = new Texture("ak47.png");
+		akSprite = new Sprite(ak);
 		TextureRegion[] regions = TextureRegion.split(playerTexture, 18, 26)[0];
 		stand = new Animation<TextureRegion>(0, regions[0]);
 		jump = new Animation<TextureRegion>(0, regions[1]);
@@ -78,8 +84,8 @@ public class LibGdxGame extends ApplicationAdapter {
 		// load the map, set the unit scale to 1/16 (1 unit == 16 pixels)
 		TmxMapLoader.Parameters parameters = new TmxMapLoader.Parameters();
 		parameters.convertObjectToTileSpace = true;
-		map = new TmxMapLoader().load("level1.tmx", parameters);
-//		map = new TmxMapLoader().load("small.tmx", parameters);
+//		map = new TmxMapLoader().load("level1.tmx", parameters);
+		map = new TmxMapLoader().load("small.tmx", parameters);
 		mapWidth = ((TiledMapTileLayer) map.getLayers().get(0)).getWidth();
 		mapHeight = ((TiledMapTileLayer) map.getLayers().get(0)).getHeight();
 		renderer = new LoopingOrthogonalTiledMapRenderer(map, 1 / 16f);
@@ -126,6 +132,9 @@ public class LibGdxGame extends ApplicationAdapter {
 
 		// render the player
 		renderPlayer(deltaTime);
+		
+		// render the gun
+		renderGun(deltaTime);
 
 		// render debug rectangles
 		if (debug) {
@@ -158,35 +167,38 @@ public class LibGdxGame extends ApplicationAdapter {
 			player.gun.reload(TimeUtils.millis());
 		}
 
-		if (Gdx.input.isTouched()) {
-			if(player.gun.fireGun(TimeUtils.millis())) {
-				Collision collision = null;
-				for(Vector2 position : player.getPositions()) {
-					if(collision != null) {
-						break;
-					}
-					shapeRenderer.setProjectionMatrix(camera.combined);
-					shapeRenderer.begin(ShapeType.Line);
-					shapeRenderer.setColor(Color.BLACK);
-					
-					float playerCenterX = position.x + (Player.WIDTH / 2);
-					float playerCenterY = position.y + (Player.HEIGHT / 2);
-					Vector2 src = new Vector2(playerCenterX, playerCenterY);
-					Vector3 literalDest = new Vector3(Gdx.input.getX(), Gdx.input.getY(), 0);
-					camera.unproject(literalDest);
-					Vector2 dest = new Vector2(literalDest.x + (position.x - player.position.x), literalDest.y);
-					float theta = (float) (180.0 / Math.PI * Math.atan2(playerCenterX - dest.x, playerCenterY - dest.y));
-					dest = new Vector2(playerCenterX, playerCenterY).add(new Vector2(20, 0).rotate(-theta - 90));
-					
-					collision = rayCastHelper.rayTest(src, dest, getTiles("walls", 0, 0, (int) mapWidth, (int) mapHeight));
-					if(collision != null) {
-						debugTiles.add(collision.getCollideableObject());
-						shapeRenderer.line(src, collision.getCollisionPoint());
-					}else{
-						shapeRenderer.line(src, dest);
-					}
-					shapeRenderer.end();
+		Collision collision = null;
+		boolean gunFired = false;
+		for(Vector2 position : player.getPositions()) {
+//			if(collision != null) {
+//				break;
+//			}
+			
+			float playerCenterX = position.x + (Player.WIDTH / 2);
+			float playerCenterY = position.y + (Player.HEIGHT / 2);
+			Vector2 src = new Vector2(playerCenterX, playerCenterY);
+			Vector3 literalDest = new Vector3(Gdx.input.getX(), Gdx.input.getY(), 0);
+			camera.unproject(literalDest);
+			Vector2 dest = new Vector2(literalDest.x + (position.x - player.position.x), literalDest.y);
+			float theta = (float) (180.0 / Math.PI * Math.atan2(playerCenterX - dest.x, playerCenterY - dest.y));
+			player.lookAngle = (-theta - 90);
+			dest = new Vector2(playerCenterX, playerCenterY).add(new Vector2(player.gun.RANGE, 0).rotate(-theta - 90));
+						
+			if(Gdx.input.isTouched() && (gunFired || player.gun.fireGun(TimeUtils.millis()))) {
+				gunFired = true;
+				System.out.println(position);
+
+				shapeRenderer.setProjectionMatrix(camera.combined);
+				shapeRenderer.begin(ShapeType.Line);
+				shapeRenderer.setColor(Color.WHITE);
+				collision = rayCastHelper.rayTest(src, dest, getTiles("walls", 0, 0, (int) mapWidth, (int) mapHeight));
+				if(collision != null) {
+					debugTiles.add(collision.getCollideableObject());
+					shapeRenderer.line(src, collision.getCollisionPoint());
+				}else{
+					shapeRenderer.line(src, dest);
 				}
+				shapeRenderer.end();
 			}
 		}
 
@@ -360,16 +372,14 @@ public class LibGdxGame extends ApplicationAdapter {
 					Rectangle rect = rectPool.obtain();
 					rect.set(x, y, 1, 1);
 					tiles.add(rect);
-				}
-				cell = layer.getCell(x + layer.getWidth() - 1, y);
-				if (cell != null) {
-					Rectangle rect = rectPool.obtain();
+					
+					cell = layer.getCell(x + layer.getWidth() - 1, y);
+					rect = rectPool.obtain();
 					rect.set(x, y, 1, 1);
 					tiles.add(rect);
-				}
-				cell = layer.getCell(x - layer.getWidth() - 1, y);
-				if (cell != null) {
-					Rectangle rect = rectPool.obtain();
+					
+					cell = layer.getCell(x - layer.getWidth() - 1, y);
+					rect = rectPool.obtain();
 					rect.set(x, y, 1, 1);
 					tiles.add(rect);
 				}
@@ -407,6 +417,12 @@ public class LibGdxGame extends ApplicationAdapter {
 			batch.draw(frame, player.leftPosition.x + Player.WIDTH, player.position.y, -Player.WIDTH, Player.HEIGHT);
 			batch.draw(frame, player.rightPosition.x + Player.WIDTH, player.position.y, -Player.WIDTH, Player.HEIGHT);
 		}
+		batch.end();
+	}
+	
+	private void renderGun(float deltaTime) {
+		batch.begin();
+		batch.draw(akSprite, (Gdx.graphics.getWidth() / 2) - 18, (Gdx.graphics.getHeight() / 2) - 16f, 16f, 16f, akSprite.getWidth() / 10, akSprite.getHeight() / 10, 1f, 1f, player.lookAngle);
 		batch.end();
 	}
 

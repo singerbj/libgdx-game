@@ -24,8 +24,9 @@ public class Player {
 	public float stateTime = 0;
 	public boolean facesRight = true;
 	public boolean grounded = false;
-	public boolean onLadder = false;
+	public boolean onLadder = false;	
 	public Gun gun = new Gun();
+	public float lookAngle = 0;
 	
 	public Player (float width, float height) {
 		Player.WIDTH = width;

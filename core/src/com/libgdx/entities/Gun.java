@@ -4,8 +4,8 @@ import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.audio.Sound;
 
 public class Gun {
-	public final long MS_BETWEEN_SHOT = 100; //0; //100
-	public final long MAX_AMMO = 30; //999999999; //30
+	public final long MS_BETWEEN_SHOT = 0; //100
+	public final long MAX_AMMO = 999999999; //30
 	public final long MS_TO_RELOAD = 2000;
 	public final long RANGE = 100;
 	

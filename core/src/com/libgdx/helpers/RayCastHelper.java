@@ -9,12 +9,12 @@ import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.math.Vector3;
 import com.badlogic.gdx.math.collision.Segment;
 import com.badlogic.gdx.utils.Array;
-import com.libgdx.game.Collision;
+import com.libgdx.game.Shot;
 
 public class RayCastHelper {
 	Intersector intersector = new Intersector();
 
-	public Collision rayTest(Vector2 source, Vector2 dest, Array<Rectangle> array) {
+	public Shot rayTest(Vector2 source, Vector2 dest, Array<Rectangle> array) {
 		// check all rects to see which intersect
 		HashMap<Segment, Rectangle> vectorRectMap = new HashMap<Segment, Rectangle>();
 		for (Rectangle r : array) {
@@ -45,11 +45,8 @@ public class RayCastHelper {
 				}
 			}
 		}
-		if (vectorRectMap.get(bestIntersectionSegment) != null) {
-			return new Collision(bestIntersection, vectorRectMap.get(bestIntersectionSegment));
-		} else {
-			return null;
-		}
+		
+		return new Shot(source, bestIntersection != null ? bestIntersection : dest, vectorRectMap.get(bestIntersectionSegment));
 	}
 
 	private Polygon rectangleToPolygon(Rectangle rect) {

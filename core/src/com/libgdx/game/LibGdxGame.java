@@ -28,21 +28,20 @@ import com.badlogic.gdx.maps.tiled.TmxMapLoader;
 import com.badlogic.gdx.maps.tiled.renderers.OrthogonalTiledMapRenderer;
 import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.math.Rectangle;
+import com.badlogic.gdx.math.Vector;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.math.Vector3;
 import com.badlogic.gdx.math.collision.Ray;
 import com.badlogic.gdx.utils.Array;
 import com.badlogic.gdx.utils.Pool;
 import com.badlogic.gdx.utils.TimeUtils;
+import com.libgdx.entities.Level;
 import com.libgdx.entities.Player;
 import com.libgdx.helpers.DebugHelper;
 import com.libgdx.helpers.RayCastHelper;
 
 public class LibGdxGame extends ApplicationAdapter {
-	private TiledMap map;
-	private float mapWidth;
-	private float mapHeight;
-	private LoopingOrthogonalTiledMapRenderer renderer;
+	private Level level;
 	private OrthographicCamera camera;
 	private Texture playerTexture;
 	private Texture ak;
@@ -51,12 +50,6 @@ public class LibGdxGame extends ApplicationAdapter {
 	private Animation<TextureRegion> walk;
 	private Animation<TextureRegion> jump;
 	private Player player;
-	private Pool<Rectangle> rectPool = new Pool<Rectangle>() {
-		@Override
-		protected Rectangle newObject() {
-			return new Rectangle();
-		}
-	};
 
 	private BitmapFont font;
 	private SpriteBatch batch;
@@ -81,15 +74,9 @@ public class LibGdxGame extends ApplicationAdapter {
 		walk = new Animation<TextureRegion>(0.15f, regions[2], regions[3], regions[4]);
 		walk.setPlayMode(Animation.PlayMode.LOOP_PINGPONG);
 
-		// load the map, set the unit scale to 1/16 (1 unit == 16 pixels)
-		TmxMapLoader.Parameters parameters = new TmxMapLoader.Parameters();
-		parameters.convertObjectToTileSpace = true;
-//		map = new TmxMapLoader().load("level1.tmx", parameters);
-		map = new TmxMapLoader().load("small.tmx", parameters);
-		mapWidth = ((TiledMapTileLayer) map.getLayers().get(0)).getWidth();
-		mapHeight = ((TiledMapTileLayer) map.getLayers().get(0)).getHeight();
-		renderer = new LoopingOrthogonalTiledMapRenderer(map, 1 / 16f);
-
+		level = new Level("level1.tmx");
+//		level = new Level("small.tmx");
+		
 		// create an orthographic camera, shows us 30x20 units of the world
 		camera = new OrthographicCamera();
 		camera.setToOrtho(false, 60f, 40f);
@@ -105,7 +92,7 @@ public class LibGdxGame extends ApplicationAdapter {
 		rayCastHelper = new RayCastHelper();
 		shapeRenderer = new ShapeRenderer();
 		debugTiles = new Array<Rectangle>();
-		debugHelper = new DebugHelper(shapeRenderer, camera, debugTiles, player, map);
+		debugHelper = new DebugHelper(shapeRenderer, camera, debugTiles, player, level);
 	}
 
 	@Override
@@ -127,8 +114,8 @@ public class LibGdxGame extends ApplicationAdapter {
 
 		// set the TiledMapRenderer view based on what the
 		// camera sees, and render the map
-		renderer.setView(camera);
-		renderer.render();
+		level.renderer.setView(camera);
+		level.renderer.render();
 
 		// render the player
 		renderPlayer(deltaTime);
@@ -166,40 +153,51 @@ public class LibGdxGame extends ApplicationAdapter {
 		if (Gdx.input.isKeyPressed(Keys.R)) {
 			player.gun.reload(TimeUtils.millis());
 		}
+		
+		float playerCenterX = player.position.x + (Player.WIDTH / 2);
+		float playerCenterY = player.position.y + (Player.HEIGHT / 2);
+		Vector2 src = new Vector2(playerCenterX, playerCenterY);
+		Vector3 literalDest = new Vector3(Gdx.input.getX(), Gdx.input.getY(), 0);
+		camera.unproject(literalDest);
+		Vector2 dest = new Vector2(literalDest.x + (player.position.x - player.position.x), literalDest.y);
+		float theta = (float) (180.0 / Math.PI * Math.atan2(playerCenterX - dest.x, playerCenterY - dest.y));
+		player.lookAngle = (-theta - 90);
 
-		Collision collision = null;
+		Shot shot = null;
+		Shot tempShot = null;
 		boolean gunFired = false;
-		for(Vector2 position : player.getPositions()) {
-//			if(collision != null) {
-//				break;
-//			}
-			
-			float playerCenterX = position.x + (Player.WIDTH / 2);
-			float playerCenterY = position.y + (Player.HEIGHT / 2);
-			Vector2 src = new Vector2(playerCenterX, playerCenterY);
-			Vector3 literalDest = new Vector3(Gdx.input.getX(), Gdx.input.getY(), 0);
-			camera.unproject(literalDest);
-			Vector2 dest = new Vector2(literalDest.x + (position.x - player.position.x), literalDest.y);
-			float theta = (float) (180.0 / Math.PI * Math.atan2(playerCenterX - dest.x, playerCenterY - dest.y));
-			player.lookAngle = (-theta - 90);
-			dest = new Vector2(playerCenterX, playerCenterY).add(new Vector2(player.gun.RANGE, 0).rotate(-theta - 90));
-						
-			if(Gdx.input.isTouched() && (gunFired || player.gun.fireGun(TimeUtils.millis()))) {
-				gunFired = true;
-				System.out.println(position);
-
-				shapeRenderer.setProjectionMatrix(camera.combined);
-				shapeRenderer.begin(ShapeType.Line);
-				shapeRenderer.setColor(Color.WHITE);
-				collision = rayCastHelper.rayTest(src, dest, getTiles("walls", 0, 0, (int) mapWidth, (int) mapHeight));
-				if(collision != null) {
-					debugTiles.add(collision.getCollideableObject());
-					shapeRenderer.line(src, collision.getCollisionPoint());
-				}else{
-					shapeRenderer.line(src, dest);
+		if(Gdx.input.isTouched()) {
+			for(Vector2 position : player.getPositions()) {
+				playerCenterX = position.x + (Player.WIDTH / 2);
+				playerCenterY = player.position.y + (Player.HEIGHT / 2);
+				src = new Vector2(playerCenterX, playerCenterY);
+				literalDest = new Vector3(Gdx.input.getX(), Gdx.input.getY(), 0);
+				camera.unproject(literalDest);
+				dest = new Vector2(literalDest.x + (player.position.x - player.position.x), literalDest.y);
+				player.lookAngle = (-theta - 90);
+				dest = new Vector2(playerCenterX, playerCenterY).add(new Vector2(player.gun.RANGE, 0).rotate(-theta - 90));
+							
+				if((gunFired || player.gun.fireGun(TimeUtils.millis()))) {
+					gunFired = true;
+					tempShot = rayCastHelper.rayTest(src, dest, level.walls);
+					if(tempShot != null && (shot == null || tempShot.getDistance() < shot.getDistance())) {
+						shot = tempShot;
+					}
+					if(shot.getCollideableObject() != null) {
+						debugTiles.add(shot.getCollideableObject());
+					}
+					
 				}
-				shapeRenderer.end();
 			}
+			
+			shapeRenderer.setProjectionMatrix(camera.combined);
+			shapeRenderer.begin(ShapeType.Line);
+			shapeRenderer.setColor(Color.WHITE);
+			for(float i = -(level.mapWidth * 2); i <= (level.mapWidth * 2); i += level.mapWidth) {
+				shapeRenderer.line(shot.getSource().x + i, shot.getSource().y, shot.getDest().x + i, shot.getDest().y);
+			}
+			shapeRenderer.end();
+			
 		}
 
 		float speedMultiplier = 1f;
@@ -214,7 +212,7 @@ public class LibGdxGame extends ApplicationAdapter {
 			}
 			if (player.grounded)
 				player.state = Player.State.Walking;
-			player.facesRight = false;
+//			player.facesRight = false;
 		}
 
 		if (Gdx.input.isKeyPressed(Keys.D)) {
@@ -224,7 +222,7 @@ public class LibGdxGame extends ApplicationAdapter {
 			}
 			if (player.grounded)
 				player.state = Player.State.Walking;
-			player.facesRight = true;
+//			player.facesRight = true;
 		}
 
 		if (Gdx.input.isKeyJustPressed(Keys.B)) {
@@ -256,7 +254,7 @@ public class LibGdxGame extends ApplicationAdapter {
 		// perform collision detection & response, on each axis, separately
 		// if the player is moving right, check the tiles to the right of it's
 		// right bounding box edge, otherwise check the ones to the left
-		Rectangle playerRect = rectPool.obtain();
+		Rectangle playerRect = new Rectangle();;
 		playerRect.set(player.position.x, player.position.y, Player.WIDTH, Player.HEIGHT);
 		int startX, startY, endX, endY;
 		if (player.velocity.x > 0) {
@@ -267,12 +265,9 @@ public class LibGdxGame extends ApplicationAdapter {
 		startY = (int) (player.position.y);
 		endY = (int) (player.position.y + Player.HEIGHT);
 
-		Array<Rectangle> floorTiles = new Array<Rectangle>();
-		Array<Rectangle> ladderTiles = new Array<Rectangle>();
-		floorTiles = getTiles("walls", startX, startY, endX, endY);
-		ladderTiles = getTiles("ladders", startX, startY, endX, endY);
+		
 		playerRect.x += player.velocity.x;
-		for (Rectangle tile : floorTiles) {
+		for (Rectangle tile : level.walls) {
 			if (playerRect.overlaps(tile)) {
 				player.velocity.x = 0;
 				break;
@@ -285,11 +280,11 @@ public class LibGdxGame extends ApplicationAdapter {
 		startX = (int) (player.position.x);
 		endX = (int) (player.position.x + Player.WIDTH);
 
-		ladderTiles = getTiles("ladders", startX, (int) (player.position.y + player.velocity.y), endX,
-				(int) (player.position.y + Player.HEIGHT + player.velocity.y));
+//		ladderTiles = getTiles("ladders", startX, (int) (player.position.y + player.velocity.y), endX,
+//				(int) (player.position.y + Player.HEIGHT + player.velocity.y));
 
 		player.onLadder = false;
-		for (Rectangle tile : ladderTiles) {
+		for (Rectangle tile : level.ladders) {
 			if (playerRect.overlaps(tile)) {
 				player.onLadder = true;
 				player.state = Player.State.Standing;
@@ -320,9 +315,8 @@ public class LibGdxGame extends ApplicationAdapter {
 			startY = endY = (int) (player.position.y + player.velocity.y);
 		}
 
-		floorTiles = getTiles("walls", startX, startY, endX, endY);
 		playerRect.y += player.velocity.y;
-		for (Rectangle tile : floorTiles) {
+		for (Rectangle tile : level.walls) {
 			if (playerRect.overlaps(tile)) {
 				// we actually reset the player y-position here
 				// so it is just below/above the tile we collided with
@@ -337,8 +331,6 @@ public class LibGdxGame extends ApplicationAdapter {
 			}
 		}
 
-		rectPool.free(playerRect);
-
 		// unscale the velocity by the inverse delta time and set
 		// the latest position
 		player.position.add(player.velocity);
@@ -351,42 +343,16 @@ public class LibGdxGame extends ApplicationAdapter {
 		// update the players alternate positions
 		if (player.position.x < 0) {
 			player.position.x = player.rightPosition.x;
-		} else if (player.position.x > mapWidth) {
+		} else if (player.position.x > level.mapWidth) {
 			player.position.x = player.leftPosition.x;
 		}
-		player.rightPosition.x = player.position.x + mapWidth;
-		player.leftPosition.x = player.position.x - mapWidth;
+		player.rightPosition.x = player.position.x + level.mapWidth;
+		player.leftPosition.x = player.position.x - level.mapWidth;
 		player.rightPosition.y = player.position.y;
 		player.leftPosition.y = player.position.y;
 	}
 
-	private Array<Rectangle> getTiles(String layerName, int startX, int startY, int endX, int endY) {
-		Array<Rectangle> tiles = new Array<Rectangle>();
-		TiledMapTileLayer layer = (TiledMapTileLayer) map.getLayers().get(layerName);
-		rectPool.freeAll(tiles);
-		tiles.clear();
-		for (int y = startY; y <= endY; y++) {
-			for (int x = startX; x <= endX; x++) {
-				Cell cell = layer.getCell(x, y);
-				if (cell != null) {
-					Rectangle rect = rectPool.obtain();
-					rect.set(x, y, 1, 1);
-					tiles.add(rect);
-					
-					cell = layer.getCell(x + layer.getWidth() - 1, y);
-					rect = rectPool.obtain();
-					rect.set(x, y, 1, 1);
-					tiles.add(rect);
-					
-					cell = layer.getCell(x - layer.getWidth() - 1, y);
-					rect = rectPool.obtain();
-					rect.set(x, y, 1, 1);
-					tiles.add(rect);
-				}
-			}
-		}
-		return tiles;
-	}
+	
 
 	private void renderPlayer(float deltaTime) {
 		// based on the player state, get the animation frame
@@ -406,24 +372,43 @@ public class LibGdxGame extends ApplicationAdapter {
 		// draw the player, depending on the current velocity
 		// on the x-axis, draw the player facing either right
 		// or left
-		Batch batch = renderer.getBatch();
-		batch.begin();
-		if (player.facesRight) {
-			batch.draw(frame, player.position.x, player.position.y, Player.WIDTH, Player.HEIGHT);
-			batch.draw(frame, player.leftPosition.x, player.position.y, Player.WIDTH, Player.HEIGHT);
-			batch.draw(frame, player.rightPosition.x, player.position.y, Player.WIDTH, Player.HEIGHT);
+		Batch rendererBatch = level.renderer.getBatch();
+		rendererBatch.begin();
+		
+		if (camera.unproject(new Vector3(Gdx.input.getX(), 0, 0)).x > player.position.x) {
+			player.facesRight = true;
+			rendererBatch.draw(frame, player.position.x, player.position.y, Player.WIDTH, Player.HEIGHT);
+			rendererBatch.draw(frame, player.leftPosition.x, player.position.y, Player.WIDTH, Player.HEIGHT);
+			rendererBatch.draw(frame, player.rightPosition.x, player.position.y, Player.WIDTH, Player.HEIGHT);
 		} else {
-			batch.draw(frame, player.position.x + Player.WIDTH, player.position.y, -Player.WIDTH, Player.HEIGHT);
-			batch.draw(frame, player.leftPosition.x + Player.WIDTH, player.position.y, -Player.WIDTH, Player.HEIGHT);
-			batch.draw(frame, player.rightPosition.x + Player.WIDTH, player.position.y, -Player.WIDTH, Player.HEIGHT);
+			player.facesRight = false;
+			rendererBatch.draw(frame, player.position.x + Player.WIDTH, player.position.y, -Player.WIDTH, Player.HEIGHT);
+			rendererBatch.draw(frame, player.leftPosition.x + Player.WIDTH, player.position.y, -Player.WIDTH, Player.HEIGHT);
+			rendererBatch.draw(frame, player.rightPosition.x + Player.WIDTH, player.position.y, -Player.WIDTH, Player.HEIGHT);
 		}
-		batch.end();
+		rendererBatch.end();
 	}
 	
 	private void renderGun(float deltaTime) {
 		batch.begin();
+		if (!player.facesRight) {
+			akSprite.flip(false, true);
+		}
+		
 		batch.draw(akSprite, (Gdx.graphics.getWidth() / 2) - 18, (Gdx.graphics.getHeight() / 2) - 16f, 16f, 16f, akSprite.getWidth() / 10, akSprite.getHeight() / 10, 1f, 1f, player.lookAngle);
+		
+		//draw gun on left
+		float projectedGunLeft = camera.project(new Vector3(camera.unproject(new Vector3((Gdx.graphics.getWidth() / 2) - 18, 0, 0)).x - level.mapWidth, 0, 0)).x;
+		batch.draw(akSprite, projectedGunLeft, (Gdx.graphics.getHeight() / 2) - 16f, 16f, 16f, akSprite.getWidth() / 10, akSprite.getHeight() / 10, 1f, 1f, player.lookAngle);
+		
+		//draw gun on right
+		float projectedGunRight = camera.project(new Vector3(camera.unproject(new Vector3((Gdx.graphics.getWidth() / 2) - 18, 0, 0)).x + level.mapWidth, 0, 0)).x;
+		batch.draw(akSprite, projectedGunRight, (Gdx.graphics.getHeight() / 2) - 16f, 16f, 16f, akSprite.getWidth() / 10, akSprite.getHeight() / 10, 1f, 1f, player.lookAngle);
+		
 		batch.end();
+		if (!player.facesRight) {
+			akSprite.flip(false, true);
+		}
 	}
 
 	@Override

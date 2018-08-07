@@ -4,18 +4,28 @@ import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.math.Vector2;
 
 public class Shot {
+	private float shotTime;	
 	private Vector2 source;
 	private Vector2 dest;
 	private Rectangle collideableObject;
 	private float distance;
-	
-	public Shot (Vector2 source, Vector2 dest, Rectangle collideableObject) {
+	private float alphaModifier = 1.0f;
+	public Shot (float shotTime, Vector2 source, Vector2 dest, Rectangle collideableObject) {
+		this.shotTime = shotTime;
 		this.source = source;
 		this.dest = dest;
 		this.collideableObject = collideableObject;
 		this.distance = Vector2.dst(this.source.x, this.source.y, this.dest.x, this.dest.y);
 	}
 	
+	public float getShotTime() {
+		return shotTime;
+	}
+
+	public void setShotTime(float shotTime) {
+		this.shotTime = shotTime;
+	}
+
 	public float getDistance() {
 		return distance;
 	}
@@ -47,4 +57,13 @@ public class Shot {
 	public void setCollideableObject(Rectangle collideableObject) {
 		this.collideableObject = collideableObject;
 	}
+	
+	public float getAlphaModifier() {
+		return alphaModifier;
+	}
+
+	public void setAlphaModifier(float alphaModifier) {
+		this.alphaModifier = alphaModifier;
+	}
+
 }

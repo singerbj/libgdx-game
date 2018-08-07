@@ -50,6 +50,7 @@ public class LibGdxGame extends ApplicationAdapter {
 	private Animation<TextureRegion> walk;
 	private Animation<TextureRegion> jump;
 	private Player player;
+	private Array<Shot> shots;
 
 	private BitmapFont font;
 	private SpriteBatch batch;
@@ -65,9 +66,11 @@ public class LibGdxGame extends ApplicationAdapter {
 	@Override
 	public void create() {
 		// load the player frames, split them, and assign them to Animations
-		playerTexture = new Texture("koalio.png");
+		playerTexture = new Texture("square.png");
 		ak = new Texture("ak47.png");
 		akSprite = new Sprite(ak);
+		shots = new Array<Shot>();
+		
 		TextureRegion[] regions = TextureRegion.split(playerTexture, 18, 26)[0];
 		stand = new Animation<TextureRegion>(0, regions[0]);
 		jump = new Animation<TextureRegion>(0, regions[1]);
@@ -100,6 +103,8 @@ public class LibGdxGame extends ApplicationAdapter {
 		// clear the screen
 		Gdx.gl.glClearColor(0.7f, 0.7f, 1.0f, 1);
 		Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
+		Gdx.gl.glEnable(GL20.GL_BLEND);
+	    Gdx.gl.glBlendFunc(GL20.GL_SRC_ALPHA, GL20.GL_ONE_MINUS_SRC_ALPHA);
 
 		// get the delta time
 		float deltaTime = Gdx.graphics.getDeltaTime();
@@ -122,7 +127,10 @@ public class LibGdxGame extends ApplicationAdapter {
 		
 		// render the gun
 		renderGun(deltaTime);
-
+		
+		// render the crosshair
+		renderCrosshair(deltaTime);
+		
 		// render debug rectangles
 		if (debug) {
 			debugHelper.renderDebug();
@@ -162,7 +170,29 @@ public class LibGdxGame extends ApplicationAdapter {
 		Vector2 dest = new Vector2(literalDest.x + (player.position.x - player.position.x), literalDest.y);
 		float theta = (float) (180.0 / Math.PI * Math.atan2(playerCenterX - dest.x, playerCenterY - dest.y));
 		player.lookAngle = (-theta - 90);
-
+		
+		for(Shot shot : shots) {
+			if(shot.getAlphaModifier() > 0f) {
+				shot.setAlphaModifier(shot.getAlphaModifier() - 0.03f);
+				shapeRenderer.setProjectionMatrix(camera.combined);
+				shapeRenderer.begin(ShapeType.Line);
+				for(float i = -(level.mapWidth * 2); i <= (level.mapWidth * 2); i += level.mapWidth) {
+					shapeRenderer.line(shot.getSource().x + i, shot.getSource().y, shot.getDest().x + i, shot.getDest().y, new Color(255f, 255f, 255f, 0.0f), new Color(255f, 255f, 255f, shot.getAlphaModifier()));
+				}
+				shapeRenderer.end();
+			}
+		}
+		
+		int index = 0;
+		for(Shot shot : shots) {
+			if(shot.getAlphaModifier() < 0.05f) {
+				shots.removeIndex(index);
+			}
+			index += 1;
+		}
+		
+		System.out.println("shots size: " + shots.size);
+		
 		Shot shot = null;
 		Shot tempShot = null;
 		boolean gunFired = false;
@@ -179,7 +209,7 @@ public class LibGdxGame extends ApplicationAdapter {
 							
 				if((gunFired || player.gun.fireGun(TimeUtils.millis()))) {
 					gunFired = true;
-					tempShot = rayCastHelper.rayTest(src, dest, level.walls);
+					tempShot = rayCastHelper.rayTest(player.stateTime, src, dest, level.walls);
 					if(tempShot != null && (shot == null || tempShot.getDistance() < shot.getDistance())) {
 						shot = tempShot;
 					}
@@ -190,11 +220,13 @@ public class LibGdxGame extends ApplicationAdapter {
 				}
 			}
 			
-			shapeRenderer.setProjectionMatrix(camera.combined);
-			shapeRenderer.begin(ShapeType.Line);
-			shapeRenderer.setColor(Color.WHITE);
-			for(float i = -(level.mapWidth * 2); i <= (level.mapWidth * 2); i += level.mapWidth) {
-				shapeRenderer.line(shot.getSource().x + i, shot.getSource().y, shot.getDest().x + i, shot.getDest().y);
+			if(shot != null) {
+				shots.add(shot);
+				shapeRenderer.setProjectionMatrix(camera.combined);
+				shapeRenderer.begin(ShapeType.Line);				
+				for(float i = -(level.mapWidth * 2); i <= (level.mapWidth * 2); i += level.mapWidth) {
+					shapeRenderer.line(shot.getSource().x + i, shot.getSource().y, shot.getDest().x + i, shot.getDest().y, new Color(255f, 255f, 255f, 0.0f), new Color(255f, 255f, 255f, shot.getAlphaModifier()));
+				}
 			}
 			shapeRenderer.end();
 			
@@ -389,26 +421,39 @@ public class LibGdxGame extends ApplicationAdapter {
 		rendererBatch.end();
 	}
 	
-	private void renderGun(float deltaTime) {
+	private void renderGun(float deltaTime) { //USE THIS IF CAMERA STAYS AT CONSTANT Y
 		batch.begin();
 		if (!player.facesRight) {
 			akSprite.flip(false, true);
 		}
 		
-		batch.draw(akSprite, (Gdx.graphics.getWidth() / 2) - 18, (Gdx.graphics.getHeight() / 2) - 16f, 16f, 16f, akSprite.getWidth() / 10, akSprite.getHeight() / 10, 1f, 1f, player.lookAngle);
+		Vector3 projectedPlayer = camera.project(new Vector3(player.position.x, player.position.y, 0f));
+		
+		batch.draw(akSprite, projectedPlayer.x, projectedPlayer.y, 16f, 16f, akSprite.getWidth() / 10, akSprite.getHeight() / 10, 1f, 1f, player.lookAngle);
 		
 		//draw gun on left
 		float projectedGunLeft = camera.project(new Vector3(camera.unproject(new Vector3((Gdx.graphics.getWidth() / 2) - 18, 0, 0)).x - level.mapWidth, 0, 0)).x;
-		batch.draw(akSprite, projectedGunLeft, (Gdx.graphics.getHeight() / 2) - 16f, 16f, 16f, akSprite.getWidth() / 10, akSprite.getHeight() / 10, 1f, 1f, player.lookAngle);
+		batch.draw(akSprite, projectedGunLeft, projectedPlayer.y, 16f, 16f, akSprite.getWidth() / 10, akSprite.getHeight() / 10, 1f, 1f, player.lookAngle);
 		
 		//draw gun on right
 		float projectedGunRight = camera.project(new Vector3(camera.unproject(new Vector3((Gdx.graphics.getWidth() / 2) - 18, 0, 0)).x + level.mapWidth, 0, 0)).x;
-		batch.draw(akSprite, projectedGunRight, (Gdx.graphics.getHeight() / 2) - 16f, 16f, 16f, akSprite.getWidth() / 10, akSprite.getHeight() / 10, 1f, 1f, player.lookAngle);
+		batch.draw(akSprite, projectedGunRight, projectedPlayer.y, 16f, 16f, akSprite.getWidth() / 10, akSprite.getHeight() / 10, 1f, 1f, player.lookAngle);
 		
 		batch.end();
 		if (!player.facesRight) {
 			akSprite.flip(false, true);
 		}
+	}
+	
+	private void renderCrosshair(float deltaTime) {
+		Gdx.input.setCursorCatched(true);
+		shapeRenderer.begin(ShapeType.Line);
+		shapeRenderer.setColor(Color.RED);
+		Vector3 literalDest = new Vector3(Gdx.input.getX(), Gdx.input.getY(), 0);
+		camera.unproject(literalDest);
+		shapeRenderer.line(literalDest.x + 0.5f, literalDest.y, literalDest.x - 0.5f, literalDest.y);
+		shapeRenderer.line(literalDest.x, literalDest.y + 0.5f, literalDest.x, literalDest.y - 0.5f);
+		shapeRenderer.end();
 	}
 
 	@Override

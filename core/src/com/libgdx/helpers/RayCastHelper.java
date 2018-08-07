@@ -14,7 +14,7 @@ import com.libgdx.game.Shot;
 public class RayCastHelper {
 	Intersector intersector = new Intersector();
 
-	public Shot rayTest(Vector2 source, Vector2 dest, Array<Rectangle> array) {
+	public Shot rayTest(float time, Vector2 source, Vector2 dest, Array<Rectangle> array) {
 		// check all rects to see which intersect
 		HashMap<Segment, Rectangle> vectorRectMap = new HashMap<Segment, Rectangle>();
 		for (Rectangle r : array) {
@@ -46,7 +46,7 @@ public class RayCastHelper {
 			}
 		}
 		
-		return new Shot(source, bestIntersection != null ? bestIntersection : dest, vectorRectMap.get(bestIntersectionSegment));
+		return new Shot(time, source, bestIntersection != null ? bestIntersection : dest, vectorRectMap.get(bestIntersectionSegment));
 	}
 
 	private Polygon rectangleToPolygon(Rectangle rect) {

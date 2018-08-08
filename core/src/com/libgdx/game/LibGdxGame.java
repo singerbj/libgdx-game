@@ -8,9 +8,12 @@ import com.badlogic.gdx.Input.Keys;
 import com.badlogic.gdx.audio.Music;
 import com.badlogic.gdx.audio.Sound;
 import com.badlogic.gdx.graphics.Color;
+import com.badlogic.gdx.graphics.Cursor;
+import com.badlogic.gdx.graphics.Cursor.SystemCursor;
 import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.GL30;
 import com.badlogic.gdx.graphics.OrthographicCamera;
+import com.badlogic.gdx.graphics.Pixmap;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.Animation;
 import com.badlogic.gdx.graphics.g2d.Batch;
@@ -96,6 +99,9 @@ public class LibGdxGame extends ApplicationAdapter {
 		shapeRenderer = new ShapeRenderer();
 		debugTiles = new Array<Rectangle>();
 		debugHelper = new DebugHelper(shapeRenderer, camera, debugTiles, player, level);
+		
+		Cursor customCursor = Gdx.graphics.newCursor(new Pixmap(Gdx.files.internal("cursor.png")), 0, 0);
+		Gdx.graphics.setCursor(customCursor);
 	}
 
 	@Override
@@ -446,7 +452,7 @@ public class LibGdxGame extends ApplicationAdapter {
 	}
 	
 	private void renderCrosshair(float deltaTime) {
-		Gdx.input.setCursorCatched(true);
+//		Gdx.input.setCursorCatched(true);
 		shapeRenderer.begin(ShapeType.Line);
 		shapeRenderer.setColor(Color.RED);
 		Vector3 literalDest = new Vector3(Gdx.input.getX(), Gdx.input.getY(), 0);

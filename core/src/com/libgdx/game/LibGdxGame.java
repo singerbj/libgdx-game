@@ -1,5 +1,6 @@
 package com.libgdx.game;
 
+import java.io.IOException;
 import java.util.Iterator;
 
 import com.badlogic.gdx.ApplicationAdapter;
@@ -38,6 +39,7 @@ import com.badlogic.gdx.math.collision.Ray;
 import com.badlogic.gdx.utils.Array;
 import com.badlogic.gdx.utils.Pool;
 import com.badlogic.gdx.utils.TimeUtils;
+import com.esotericsoftware.kryonet.Server;
 import com.libgdx.entities.Level;
 import com.libgdx.entities.Player;
 import com.libgdx.helpers.DebugHelper;
@@ -46,14 +48,16 @@ import com.libgdx.helpers.RayCastHelper;
 public class LibGdxGame extends ApplicationAdapter {
 	private Level level;
 	private OrthographicCamera camera;
-	private Texture playerTexture;
+	
 	private Texture ak;
 	private Sprite akSprite;
-	private Animation<TextureRegion> stand;
-	private Animation<TextureRegion> walk;
-	private Animation<TextureRegion> jump;
+	
 	private Player player;
+	
+	//network related variables
+	private Network network;
 	private Array<Shot> shots;
+	private Array<Player> players;
 
 	private BitmapFont font;
 	private SpriteBatch batch;
@@ -65,17 +69,35 @@ public class LibGdxGame extends ApplicationAdapter {
 	private DebugHelper debugHelper;
 	ShapeRenderer shapeRenderer;
 	private RayCastHelper rayCastHelper;
+	
+	private Texture playerTexture;
+	private TextureRegion[] regions;
+	public Animation<TextureRegion> stand;
+	public Animation<TextureRegion> jump;
+	public Animation<TextureRegion> walk;
 
 	@Override
 	public void create() {
 		// load the player frames, split them, and assign them to Animations
-		playerTexture = new Texture("square.png");
+		
 		ak = new Texture("ak47.png");
 		akSprite = new Sprite(ak);
-		shots = new Array<Shot>();
 		
-		TextureRegion[] regions = TextureRegion.split(playerTexture, 18, 26)[0];
+		//network related variables initialized
+		shots = new Array<Shot>();
+		players = new Array<Player>();
+		try {
+			network = new Network(true, player, players, shots);
+		} catch (IOException e) {
+			System.out.println(e.getMessage());
+			e.printStackTrace();
+			System.exit(1);
+		}
+		
+		playerTexture = new Texture("square.png");
+		regions = TextureRegion.split(playerTexture, 18, 26)[0];
 		stand = new Animation<TextureRegion>(0, regions[0]);
+
 		jump = new Animation<TextureRegion>(0, regions[1]);
 		walk = new Animation<TextureRegion>(0.15f, regions[2], regions[3], regions[4]);
 		walk.setPlayMode(Animation.PlayMode.LOOP_PINGPONG);
@@ -89,7 +111,7 @@ public class LibGdxGame extends ApplicationAdapter {
 		camera.update();
 
 		// create the Player we want to move around the world
-		player = new Player(1 / 16f * regions[0].getRegionWidth(), 1 / 16f * regions[0].getRegionHeight());
+		player = new Player("derp");
 		player.position.set(20f, 10f);
 
 		font = new BitmapFont();
@@ -129,7 +151,7 @@ public class LibGdxGame extends ApplicationAdapter {
 		level.renderer.render();
 
 		// render the player
-		renderPlayer(deltaTime);
+		renderPlayers(deltaTime);
 		
 		// render the gun
 		renderGun(deltaTime);
@@ -137,7 +159,7 @@ public class LibGdxGame extends ApplicationAdapter {
 		// render the crosshair
 		renderCrosshair(deltaTime);
 		
-		// render debug rectangles
+		// render debug shapes
 		if (debug) {
 			debugHelper.renderDebug();
 			batch.begin();
@@ -196,8 +218,6 @@ public class LibGdxGame extends ApplicationAdapter {
 			}
 			index += 1;
 		}
-		
-		System.out.println("shots size: " + shots.size);
 		
 		Shot shot = null;
 		Shot tempShot = null;
@@ -392,39 +412,46 @@ public class LibGdxGame extends ApplicationAdapter {
 
 	
 
-	private void renderPlayer(float deltaTime) {
+	private void renderPlayers(float deltaTime) {
+		renderPlayer(deltaTime, player);
+		for(Player player : players) {
+			renderPlayer(deltaTime, player);
+		}
+	}
+	
+	private void renderPlayer(float deltaTime, Player player) {
 		// based on the player state, get the animation frame
-		TextureRegion frame = null;
-		switch (player.state) {
-		case Standing:
-			frame = stand.getKeyFrame(player.stateTime);
-			break;
-		case Walking:
-			frame = walk.getKeyFrame(player.stateTime);
-			break;
-		case Jumping:
-			frame = jump.getKeyFrame(player.stateTime);
-			break;
-		}
+			TextureRegion frame = null;
+			switch (player.state) {
+			case Standing:
+				frame = stand.getKeyFrame(player.stateTime);
+				break;
+			case Walking:
+				frame = walk.getKeyFrame(player.stateTime);
+				break;
+			case Jumping:
+				frame = jump.getKeyFrame(player.stateTime);
+				break;
+			}
 
-		// draw the player, depending on the current velocity
-		// on the x-axis, draw the player facing either right
-		// or left
-		Batch rendererBatch = level.renderer.getBatch();
-		rendererBatch.begin();
-		
-		if (camera.unproject(new Vector3(Gdx.input.getX(), 0, 0)).x > player.position.x) {
-			player.facesRight = true;
-			rendererBatch.draw(frame, player.position.x, player.position.y, Player.WIDTH, Player.HEIGHT);
-			rendererBatch.draw(frame, player.leftPosition.x, player.position.y, Player.WIDTH, Player.HEIGHT);
-			rendererBatch.draw(frame, player.rightPosition.x, player.position.y, Player.WIDTH, Player.HEIGHT);
-		} else {
-			player.facesRight = false;
-			rendererBatch.draw(frame, player.position.x + Player.WIDTH, player.position.y, -Player.WIDTH, Player.HEIGHT);
-			rendererBatch.draw(frame, player.leftPosition.x + Player.WIDTH, player.position.y, -Player.WIDTH, Player.HEIGHT);
-			rendererBatch.draw(frame, player.rightPosition.x + Player.WIDTH, player.position.y, -Player.WIDTH, Player.HEIGHT);
-		}
-		rendererBatch.end();
+			// draw the player, depending on the current velocity
+			// on the x-axis, draw the player facing either right
+			// or left
+			Batch rendererBatch = level.renderer.getBatch();
+			rendererBatch.begin();
+			
+			if (camera.unproject(new Vector3(Gdx.input.getX(), 0, 0)).x > player.position.x) {
+				player.facesRight = true;
+				rendererBatch.draw(frame, player.position.x, player.position.y, Player.WIDTH, Player.HEIGHT);
+				rendererBatch.draw(frame, player.leftPosition.x, player.position.y, Player.WIDTH, Player.HEIGHT);
+				rendererBatch.draw(frame, player.rightPosition.x, player.position.y, Player.WIDTH, Player.HEIGHT);
+			} else {
+				player.facesRight = false;
+				rendererBatch.draw(frame, player.position.x + Player.WIDTH, player.position.y, -Player.WIDTH, Player.HEIGHT);
+				rendererBatch.draw(frame, player.leftPosition.x + Player.WIDTH, player.position.y, -Player.WIDTH, Player.HEIGHT);
+				rendererBatch.draw(frame, player.rightPosition.x + Player.WIDTH, player.position.y, -Player.WIDTH, Player.HEIGHT);
+			}
+			rendererBatch.end();
 	}
 	
 	private void renderGun(float deltaTime) { //USE THIS IF CAMERA STAYS AT CONSTANT Y

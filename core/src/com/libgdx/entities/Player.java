@@ -15,7 +15,8 @@ public class Player {
 	public enum State {
 		Standing, Walking, Jumping
 	}
-
+	
+	public String id;
 	public final Vector2 position = new Vector2();
 	public final Vector2 leftPosition = new Vector2();
 	public final Vector2 rightPosition = new Vector2();
@@ -28,9 +29,10 @@ public class Player {
 	public Gun gun = new Gun();
 	public float lookAngle = 0;
 	
-	public Player (float width, float height) {
-		Player.WIDTH = width;
-		Player.HEIGHT = height;
+	public Player (String id) {
+		this.id = id;
+		Player.WIDTH = 1f; //1 / 16f; // * regions[0].getRegionWidth();
+		Player.HEIGHT = 2f; //1 / 16f; // * regions[0].getRegionHeight();
 	}
 	
 	public Array<Vector2> getPositions () {

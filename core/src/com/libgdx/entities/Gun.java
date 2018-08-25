@@ -20,11 +20,9 @@ public class Gun {
 		
 	public boolean fireGun (long time) {
 		if(!reloading && time > (lastShotTime + MS_BETWEEN_SHOT) && currentAmmo > 0) {
-//			System.out.println("shot fired! remaining ammo: " + currentAmmo);
 			sound.play(0.1f);
 			lastShotTime = time;
 			currentAmmo = currentAmmo - 1;
-//			System.out.println("SHot fired! ammo left: " + currentAmmo);
 			return true;
 		}
 		return false;
@@ -38,8 +36,7 @@ public class Gun {
 	}
 	
 	public void updateReloadState (long time) {
-		if(reloading == true) {
-//			System.out.println("reloadPerentage: " + (float)(time - (reloadCompleteTime - MS_TO_RELOAD))  + " / " + (float) MS_TO_RELOAD);
+		if(reloading == true) {			
 			reloadPerentage = (float)(time - (reloadCompleteTime - MS_TO_RELOAD)) / (float) MS_TO_RELOAD;
 			if(reloadPerentage >= 1.0) {
 				reloading = false;

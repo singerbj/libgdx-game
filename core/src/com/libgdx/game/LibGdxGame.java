@@ -102,12 +102,13 @@ public class LibGdxGame extends ApplicationAdapter {
 		walk = new Animation<TextureRegion>(0.15f, regions[2], regions[3], regions[4]);
 		walk.setPlayMode(Animation.PlayMode.LOOP_PINGPONG);
 
-		level = new Level("level1.tmx");
+//		level = new Level("level1.tmx");
 //		level = new Level("small.tmx");
+		level = new Level("kenney.tmx");
 		
-		// create an orthographic camera, shows us 30x20 units of the world
+		// create an orthographic camera
 		camera = new OrthographicCamera();
-		camera.setToOrtho(false, 60f, 40f);
+		camera.setToOrtho(false, 1920 / 25f, 1080 / 25f);
 		camera.update();
 
 		// create the Player we want to move around the world
@@ -118,12 +119,12 @@ public class LibGdxGame extends ApplicationAdapter {
 		batch = new SpriteBatch();
 
 		rayCastHelper = new RayCastHelper();
-		shapeRenderer = new ShapeRenderer();
+		shapeRenderer = new ShapeRenderer();    
 		debugTiles = new Array<Rectangle>();
 		debugHelper = new DebugHelper(shapeRenderer, camera, debugTiles, player, level);
 		
-		Cursor customCursor = Gdx.graphics.newCursor(new Pixmap(Gdx.files.internal("cursor.png")), 0, 0);
-		Gdx.graphics.setCursor(customCursor);
+//		Cursor customCursor = Gdx.graphics.newCursor(new Pixmap(Gdx.files.internal("cursor.png")), 0, 0);
+//		Gdx.graphics.setCursor(customCursor);
 	}
 
 	@Override
@@ -133,9 +134,12 @@ public class LibGdxGame extends ApplicationAdapter {
 		Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
 		Gdx.gl.glEnable(GL20.GL_BLEND);
 	    Gdx.gl.glBlendFunc(GL20.GL_SRC_ALPHA, GL20.GL_ONE_MINUS_SRC_ALPHA);
-
+	    
 		// get the delta time
 		float deltaTime = Gdx.graphics.getDeltaTime();
+		
+		// set projection matrix whatever that is	
+		shapeRenderer.setProjectionMatrix(camera.combined);
 
 		// update the player (process input, collision detection, position update)
 		updatePlayer(deltaTime);
@@ -201,8 +205,7 @@ public class LibGdxGame extends ApplicationAdapter {
 		
 		for(Shot shot : shots) {
 			if(shot.getAlphaModifier() > 0f) {
-				shot.setAlphaModifier(shot.getAlphaModifier() - 0.03f);
-				shapeRenderer.setProjectionMatrix(camera.combined);
+				shot.setAlphaModifier(shot.getAlphaModifier() - 0.03f);				
 				shapeRenderer.begin(ShapeType.Line);
 				for(float i = -(level.mapWidth * 2); i <= (level.mapWidth * 2); i += level.mapWidth) {
 					shapeRenderer.line(shot.getSource().x + i, shot.getSource().y, shot.getDest().x + i, shot.getDest().y, new Color(255f, 255f, 255f, 0.0f), new Color(255f, 255f, 255f, shot.getAlphaModifier()));
@@ -248,7 +251,6 @@ public class LibGdxGame extends ApplicationAdapter {
 			
 			if(shot != null) {
 				shots.add(shot);
-				shapeRenderer.setProjectionMatrix(camera.combined);
 				shapeRenderer.begin(ShapeType.Line);				
 				for(float i = -(level.mapWidth * 2); i <= (level.mapWidth * 2); i += level.mapWidth) {
 					shapeRenderer.line(shot.getSource().x + i, shot.getSource().y, shot.getDest().x + i, shot.getDest().y, new Color(255f, 255f, 255f, 0.0f), new Color(255f, 255f, 255f, shot.getAlphaModifier()));
@@ -479,7 +481,7 @@ public class LibGdxGame extends ApplicationAdapter {
 	}
 	
 	private void renderCrosshair(float deltaTime) {
-//		Gdx.input.setCursorCatched(true);
+//		Gdx.input.setCursorCatched(true);		
 		shapeRenderer.begin(ShapeType.Line);
 		shapeRenderer.setColor(Color.RED);
 		Vector3 literalDest = new Vector3(Gdx.input.getX(), Gdx.input.getY(), 0);

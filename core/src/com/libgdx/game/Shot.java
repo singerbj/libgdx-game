@@ -10,6 +10,7 @@ public class Shot {
 	private Rectangle collideableObject;
 	private float distance;
 	private float alphaModifier = 1.0f;
+	
 	public Shot (float shotTime, Vector2 source, Vector2 dest, Rectangle collideableObject) {
 		this.shotTime = shotTime;
 		this.source = source;

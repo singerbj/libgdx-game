@@ -33,7 +33,7 @@ public class Level {
 		map = new TmxMapLoader().load(mapName, parameters);
 		mapWidth = ((TiledMapTileLayer) map.getLayers().get(0)).getWidth();
 		mapHeight = ((TiledMapTileLayer) map.getLayers().get(0)).getHeight();
-		renderer = new LoopingOrthogonalTiledMapRenderer(map, 1 / 16f);
+		renderer = new LoopingOrthogonalTiledMapRenderer(map, 1 / 70f);
 		
 		walls = getTiles("walls", 0, 0, (int) mapWidth, (int) mapHeight);
 		ladders = getTiles("ladders", 0, 0, (int) mapWidth, (int) mapHeight);

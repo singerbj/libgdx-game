@@ -1,6 +1,7 @@
 package com.libgdx.game;
 
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.Iterator;
 
 import com.badlogic.gdx.ApplicationAdapter;
@@ -46,15 +47,17 @@ import com.libgdx.helpers.DebugHelper;
 import com.libgdx.helpers.RayCastHelper;
 
 public class LibGdxGame extends ApplicationAdapter {
+	Array<String> args;
+	
 	private Level level;
 	private OrthographicCamera camera;
-	
+
 	private Texture ak;
 	private Sprite akSprite;
-	
+
 	private Player player;
-	
-	//network related variables
+
+	// network related variables
 	private Network network;
 	private Array<Shot> shots;
 	private Array<Player> players;
@@ -69,31 +72,38 @@ public class LibGdxGame extends ApplicationAdapter {
 	private DebugHelper debugHelper;
 	ShapeRenderer shapeRenderer;
 	private RayCastHelper rayCastHelper;
-	
+
 	private Texture playerTexture;
 	private TextureRegion[] regions;
 	public Animation<TextureRegion> stand;
 	public Animation<TextureRegion> jump;
 	public Animation<TextureRegion> walk;
+	
+	public LibGdxGame(String[] args) {
+		super();
+		this.args = Array.with(args);
+	}
 
 	@Override
 	public void create() {
 		// load the player frames, split them, and assign them to Animations
-		
+
 		ak = new Texture("ak47.png");
 		akSprite = new Sprite(ak);
-		
-		//network related variables initialized
+
+		// network related variables initialized
 		shots = new Array<Shot>();
 		players = new Array<Player>();
+		player = new Player();
+		System.out.println(args);
 		try {
-			network = new Network(true, player, players, shots);
+			network = new Network(args.contains("server", false), player, players, shots);
 		} catch (IOException e) {
 			System.out.println(e.getMessage());
 			e.printStackTrace();
 			System.exit(1);
 		}
-		
+
 		playerTexture = new Texture("square.png");
 		regions = TextureRegion.split(playerTexture, 18, 26)[0];
 		stand = new Animation<TextureRegion>(0, regions[0]);
@@ -102,29 +112,26 @@ public class LibGdxGame extends ApplicationAdapter {
 		walk = new Animation<TextureRegion>(0.15f, regions[2], regions[3], regions[4]);
 		walk.setPlayMode(Animation.PlayMode.LOOP_PINGPONG);
 
-//		level = new Level("level1.tmx");
-//		level = new Level("small.tmx");
+		// level = new Level("level1.tmx");
+		// level = new Level("small.tmx");
 		level = new Level("kenney.tmx");
-		
+
 		// create an orthographic camera
 		camera = new OrthographicCamera();
 		camera.setToOrtho(false, 1920 / 25f, 1080 / 25f);
 		camera.update();
 
-		// create the Player we want to move around the world
-		player = new Player("derp");
-		player.position.set(20f, 10f);
-
 		font = new BitmapFont();
 		batch = new SpriteBatch();
 
 		rayCastHelper = new RayCastHelper();
-		shapeRenderer = new ShapeRenderer();    
+		shapeRenderer = new ShapeRenderer();
 		debugTiles = new Array<Rectangle>();
 		debugHelper = new DebugHelper(shapeRenderer, camera, debugTiles, player, level);
-		
-//		Cursor customCursor = Gdx.graphics.newCursor(new Pixmap(Gdx.files.internal("cursor.png")), 0, 0);
-//		Gdx.graphics.setCursor(customCursor);
+
+		// Cursor customCursor = Gdx.graphics.newCursor(new
+		// Pixmap(Gdx.files.internal("cursor.png")), 0, 0);
+		// Gdx.graphics.setCursor(customCursor);
 	}
 
 	@Override
@@ -133,51 +140,63 @@ public class LibGdxGame extends ApplicationAdapter {
 		Gdx.gl.glClearColor(0.7f, 0.7f, 1.0f, 1);
 		Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
 		Gdx.gl.glEnable(GL20.GL_BLEND);
-	    Gdx.gl.glBlendFunc(GL20.GL_SRC_ALPHA, GL20.GL_ONE_MINUS_SRC_ALPHA);
-	    
+		Gdx.gl.glBlendFunc(GL20.GL_SRC_ALPHA, GL20.GL_ONE_MINUS_SRC_ALPHA);
+
 		// get the delta time
 		float deltaTime = Gdx.graphics.getDeltaTime();
-		
-		// set projection matrix whatever that is	
+
+		// set projection matrix whatever that is
 		shapeRenderer.setProjectionMatrix(camera.combined);
 
+		// handle non player inputs
+		handleNonPlayerInputs();
+
 		// update the player (process input, collision detection, position update)
-		updatePlayer(deltaTime);
+		if (player != null) {
+			updatePlayer(deltaTime);
 
-		// let the camera follow the player, x-axis only
-		camera.position.x = player.position.x + (Player.WIDTH / 2);
-		camera.position.y = player.position.y + (Player.HEIGHT / 2);
-		camera.update();
+			// let the camera follow the player, x-axis only
+			camera.position.x = player.position.x + (Player.WIDTH / 2);
+			camera.position.y = player.position.y + (Player.HEIGHT / 2);
+			camera.update();
 
-		// set the TiledMapRenderer view based on what the
-		// camera sees, and render the map
-		level.renderer.setView(camera);
-		level.renderer.render();
+			// set the TiledMapRenderer view based on what the
+			// camera sees, and render the map
+			level.renderer.setView(camera);
+			level.renderer.render();
 
-		// render the player
-		renderPlayers(deltaTime);
-		
-		// render the gun
-		renderGun(deltaTime);
-		
-		// render the crosshair
-		renderCrosshair(deltaTime);
-		
-		// render debug shapes
-		if (debug) {
-			debugHelper.renderDebug();
-			batch.begin();
-			font.draw(batch, (int) Gdx.graphics.getFramesPerSecond() + " fps", 3, Gdx.graphics.getHeight() - 3);
-			batch.end();
+			// render the player
+			renderPlayers(deltaTime);
+
+			// render the gun
+			renderGun(deltaTime);
+
+			// render the crosshair
+			renderCrosshair(deltaTime);
+
+			// render debug shapes
+			if (debug) {
+				debugHelper.renderDebug();
+				batch.begin();
+				font.draw(batch, (int) Gdx.graphics.getFramesPerSecond() + " fps", 3, Gdx.graphics.getHeight() - 3);
+				batch.end();
+			}
+			
+			network.sendPlayerData(player.id, player.position, player.velocity);
+		}
+	}
+
+	private void handleNonPlayerInputs() {
+		if (Gdx.input.isKeyPressed(Keys.ESCAPE)) {
+			if (network != null) {
+				network.shutdownNetwork();
+			}
+			System.exit(0);
 		}
 	}
 
 	private void updatePlayer(float deltaTime) {
 		// check for quit command
-		if (Gdx.input.isKeyPressed(Keys.ESCAPE)) {
-			System.exit(0);
-		}
-
 		player.stateTime += deltaTime;
 
 		// check input and apply to velocity & state
@@ -188,12 +207,12 @@ public class LibGdxGame extends ApplicationAdapter {
 				player.grounded = false;
 			}
 		}
-		
+
 		player.gun.updateReloadState(TimeUtils.millis());
 		if (Gdx.input.isKeyPressed(Keys.R)) {
 			player.gun.reload(TimeUtils.millis());
 		}
-		
+
 		float playerCenterX = player.position.x + (Player.WIDTH / 2);
 		float playerCenterY = player.position.y + (Player.HEIGHT / 2);
 		Vector2 src = new Vector2(playerCenterX, playerCenterY);
@@ -202,31 +221,33 @@ public class LibGdxGame extends ApplicationAdapter {
 		Vector2 dest = new Vector2(literalDest.x + (player.position.x - player.position.x), literalDest.y);
 		float theta = (float) (180.0 / Math.PI * Math.atan2(playerCenterX - dest.x, playerCenterY - dest.y));
 		player.lookAngle = (-theta - 90);
-		
-		for(Shot shot : shots) {
-			if(shot.getAlphaModifier() > 0f) {
-				shot.setAlphaModifier(shot.getAlphaModifier() - 0.03f);				
+
+		for (Shot shot : shots) {
+			if (shot.getAlphaModifier() > 0f) {
+				shot.setAlphaModifier(shot.getAlphaModifier() - 0.03f);
 				shapeRenderer.begin(ShapeType.Line);
-				for(float i = -(level.mapWidth * 2); i <= (level.mapWidth * 2); i += level.mapWidth) {
-					shapeRenderer.line(shot.getSource().x + i, shot.getSource().y, shot.getDest().x + i, shot.getDest().y, new Color(255f, 255f, 255f, 0.0f), new Color(255f, 255f, 255f, shot.getAlphaModifier()));
+				for (float i = -(level.mapWidth * 2); i <= (level.mapWidth * 2); i += level.mapWidth) {
+					shapeRenderer.line(shot.getSource().x + i, shot.getSource().y, shot.getDest().x + i,
+							shot.getDest().y, new Color(255f, 255f, 255f, 0.0f),
+							new Color(255f, 255f, 255f, shot.getAlphaModifier()));
 				}
 				shapeRenderer.end();
 			}
 		}
-		
+
 		int index = 0;
-		for(Shot shot : shots) {
-			if(shot.getAlphaModifier() < 0.05f) {
+		for (Shot shot : shots) {
+			if (shot.getAlphaModifier() < 0.05f) {
 				shots.removeIndex(index);
 			}
 			index += 1;
 		}
-		
+
 		Shot shot = null;
 		Shot tempShot = null;
 		boolean gunFired = false;
-		if(Gdx.input.isTouched()) {
-			for(Vector2 position : player.getPositions()) {
+		if (Gdx.input.isTouched()) {
+			for (Vector2 position : player.getPositions()) {
 				playerCenterX = position.x + (Player.WIDTH / 2);
 				playerCenterY = player.position.y + (Player.HEIGHT / 2);
 				src = new Vector2(playerCenterX, playerCenterY);
@@ -234,30 +255,33 @@ public class LibGdxGame extends ApplicationAdapter {
 				camera.unproject(literalDest);
 				dest = new Vector2(literalDest.x + (player.position.x - player.position.x), literalDest.y);
 				player.lookAngle = (-theta - 90);
-				dest = new Vector2(playerCenterX, playerCenterY).add(new Vector2(player.gun.RANGE, 0).rotate(-theta - 90));
-							
-				if((gunFired || player.gun.fireGun(TimeUtils.millis()))) {
+				dest = new Vector2(playerCenterX, playerCenterY)
+						.add(new Vector2(player.gun.RANGE, 0).rotate(-theta - 90));
+
+				if ((gunFired || player.gun.fireGun(TimeUtils.millis()))) {
 					gunFired = true;
 					tempShot = rayCastHelper.rayTest(player.stateTime, src, dest, level.walls);
-					if(tempShot != null && (shot == null || tempShot.getDistance() < shot.getDistance())) {
+					if (tempShot != null && (shot == null || tempShot.getDistance() < shot.getDistance())) {
 						shot = tempShot;
 					}
-					if(shot.getCollideableObject() != null) {
+					if (shot.getCollideableObject() != null) {
 						debugTiles.add(shot.getCollideableObject());
 					}
-					
+
 				}
 			}
-			
-			if(shot != null) {
+
+			if (shot != null) {
 				shots.add(shot);
-				shapeRenderer.begin(ShapeType.Line);				
-				for(float i = -(level.mapWidth * 2); i <= (level.mapWidth * 2); i += level.mapWidth) {
-					shapeRenderer.line(shot.getSource().x + i, shot.getSource().y, shot.getDest().x + i, shot.getDest().y, new Color(255f, 255f, 255f, 0.0f), new Color(255f, 255f, 255f, shot.getAlphaModifier()));
+				shapeRenderer.begin(ShapeType.Line);
+				for (float i = -(level.mapWidth * 2); i <= (level.mapWidth * 2); i += level.mapWidth) {
+					shapeRenderer.line(shot.getSource().x + i, shot.getSource().y, shot.getDest().x + i,
+							shot.getDest().y, new Color(255f, 255f, 255f, 0.0f),
+							new Color(255f, 255f, 255f, shot.getAlphaModifier()));
 				}
 			}
 			shapeRenderer.end();
-			
+
 		}
 
 		float speedMultiplier = 1f;
@@ -272,7 +296,7 @@ public class LibGdxGame extends ApplicationAdapter {
 			}
 			if (player.grounded)
 				player.state = Player.State.Walking;
-//			player.facesRight = false;
+			// player.facesRight = false;
 		}
 
 		if (Gdx.input.isKeyPressed(Keys.D)) {
@@ -282,7 +306,7 @@ public class LibGdxGame extends ApplicationAdapter {
 			}
 			if (player.grounded)
 				player.state = Player.State.Walking;
-//			player.facesRight = true;
+			// player.facesRight = true;
 		}
 
 		if (Gdx.input.isKeyJustPressed(Keys.B)) {
@@ -314,18 +338,17 @@ public class LibGdxGame extends ApplicationAdapter {
 		// perform collision detection & response, on each axis, separately
 		// if the player is moving right, check the tiles to the right of it's
 		// right bounding box edge, otherwise check the ones to the left
-		Rectangle playerRect = new Rectangle();;
+		Rectangle playerRect = new Rectangle();
 		playerRect.set(player.position.x, player.position.y, Player.WIDTH, Player.HEIGHT);
-		int startX, startY, endX, endY;
+		int startY, endX, endY;
 		if (player.velocity.x > 0) {
-			startX = endX = (int) (player.position.x + Player.WIDTH + player.velocity.x);
+			endX = (int) (player.position.x + Player.WIDTH + player.velocity.x);
 		} else {
-			startX = endX = (int) (player.position.x + player.velocity.x);
+			endX = (int) (player.position.x + player.velocity.x);
 		}
 		startY = (int) (player.position.y);
 		endY = (int) (player.position.y + Player.HEIGHT);
 
-		
 		playerRect.x += player.velocity.x;
 		for (Rectangle tile : level.walls) {
 			if (playerRect.overlaps(tile)) {
@@ -335,13 +358,11 @@ public class LibGdxGame extends ApplicationAdapter {
 		}
 		playerRect.x = player.position.x;
 
-		// if the player is moving upwards, check the tiles to the top of its
-		// top bounding box edge, otherwise check the ones to the bottom
-		startX = (int) (player.position.x);
 		endX = (int) (player.position.x + Player.WIDTH);
 
-//		ladderTiles = getTiles("ladders", startX, (int) (player.position.y + player.velocity.y), endX,
-//				(int) (player.position.y + Player.HEIGHT + player.velocity.y));
+		// ladderTiles = getTiles("ladders", startX, (int) (player.position.y +
+		// player.velocity.y), endX,
+		// (int) (player.position.y + Player.HEIGHT + player.velocity.y));
 
 		player.onLadder = false;
 		for (Rectangle tile : level.ladders) {
@@ -406,82 +427,89 @@ public class LibGdxGame extends ApplicationAdapter {
 		} else if (player.position.x > level.mapWidth) {
 			player.position.x = player.leftPosition.x;
 		}
-		player.rightPosition.x = player.position.x + level.mapWidth;
-		player.leftPosition.x = player.position.x - level.mapWidth;
-		player.rightPosition.y = player.position.y;
-		player.leftPosition.y = player.position.y;
-	}
 
-	
+		player.updateLeftRightPositions(level.mapWidth);
+	}
 
 	private void renderPlayers(float deltaTime) {
 		renderPlayer(deltaTime, player);
-		for(Player player : players) {
-			renderPlayer(deltaTime, player);
+		for (Player otherPlayer : players) {
+			if(otherPlayer.id != player.id) {
+				otherPlayer.updateLeftRightPositions(level.mapWidth);
+				renderPlayer(deltaTime, otherPlayer);
+			}
 		}
 	}
-	
+
 	private void renderPlayer(float deltaTime, Player player) {
 		// based on the player state, get the animation frame
-			TextureRegion frame = null;
-			switch (player.state) {
-			case Standing:
-				frame = stand.getKeyFrame(player.stateTime);
-				break;
-			case Walking:
-				frame = walk.getKeyFrame(player.stateTime);
-				break;
-			case Jumping:
-				frame = jump.getKeyFrame(player.stateTime);
-				break;
-			}
+		TextureRegion frame = null;
+		switch (player.state) {
+		case Standing:
+			frame = stand.getKeyFrame(player.stateTime);
+			break;
+		case Walking:
+			frame = walk.getKeyFrame(player.stateTime);
+			break;
+		case Jumping:
+			frame = jump.getKeyFrame(player.stateTime);
+			break;
+		}
 
-			// draw the player, depending on the current velocity
-			// on the x-axis, draw the player facing either right
-			// or left
-			Batch rendererBatch = level.renderer.getBatch();
-			rendererBatch.begin();
-			
-			if (camera.unproject(new Vector3(Gdx.input.getX(), 0, 0)).x > player.position.x) {
-				player.facesRight = true;
-				rendererBatch.draw(frame, player.position.x, player.position.y, Player.WIDTH, Player.HEIGHT);
-				rendererBatch.draw(frame, player.leftPosition.x, player.position.y, Player.WIDTH, Player.HEIGHT);
-				rendererBatch.draw(frame, player.rightPosition.x, player.position.y, Player.WIDTH, Player.HEIGHT);
-			} else {
-				player.facesRight = false;
-				rendererBatch.draw(frame, player.position.x + Player.WIDTH, player.position.y, -Player.WIDTH, Player.HEIGHT);
-				rendererBatch.draw(frame, player.leftPosition.x + Player.WIDTH, player.position.y, -Player.WIDTH, Player.HEIGHT);
-				rendererBatch.draw(frame, player.rightPosition.x + Player.WIDTH, player.position.y, -Player.WIDTH, Player.HEIGHT);
-			}
-			rendererBatch.end();
+		// draw the player, depending on the current velocity
+		// on the x-axis, draw the player facing either right
+		// or left
+		Batch rendererBatch = level.renderer.getBatch();
+		rendererBatch.begin();
+
+		if (camera.unproject(new Vector3(Gdx.input.getX(), 0, 0)).x > player.position.x) {
+			player.facesRight = true;
+			rendererBatch.draw(frame, player.position.x, player.position.y, Player.WIDTH, Player.HEIGHT);
+			rendererBatch.draw(frame, player.leftPosition.x, player.position.y, Player.WIDTH, Player.HEIGHT);
+			rendererBatch.draw(frame, player.rightPosition.x, player.position.y, Player.WIDTH, Player.HEIGHT);
+		} else {
+			player.facesRight = false;
+			rendererBatch.draw(frame, player.position.x + Player.WIDTH, player.position.y, -Player.WIDTH,
+					Player.HEIGHT);
+			rendererBatch.draw(frame, player.leftPosition.x + Player.WIDTH, player.position.y, -Player.WIDTH,
+					Player.HEIGHT);
+			rendererBatch.draw(frame, player.rightPosition.x + Player.WIDTH, player.position.y, -Player.WIDTH,
+					Player.HEIGHT);
+		}
+		rendererBatch.end();
 	}
-	
-	private void renderGun(float deltaTime) { //USE THIS IF CAMERA STAYS AT CONSTANT Y
+
+	private void renderGun(float deltaTime) { // USE THIS IF CAMERA STAYS AT CONSTANT Y
 		batch.begin();
 		if (!player.facesRight) {
 			akSprite.flip(false, true);
 		}
-		
+
 		Vector3 projectedPlayer = camera.project(new Vector3(player.position.x, player.position.y, 0f));
-		
-		batch.draw(akSprite, projectedPlayer.x, projectedPlayer.y, 16f, 16f, akSprite.getWidth() / 10, akSprite.getHeight() / 10, 1f, 1f, player.lookAngle);
-		
-		//draw gun on left
-		float projectedGunLeft = camera.project(new Vector3(camera.unproject(new Vector3((Gdx.graphics.getWidth() / 2) - 18, 0, 0)).x - level.mapWidth, 0, 0)).x;
-		batch.draw(akSprite, projectedGunLeft, projectedPlayer.y, 16f, 16f, akSprite.getWidth() / 10, akSprite.getHeight() / 10, 1f, 1f, player.lookAngle);
-		
-		//draw gun on right
-		float projectedGunRight = camera.project(new Vector3(camera.unproject(new Vector3((Gdx.graphics.getWidth() / 2) - 18, 0, 0)).x + level.mapWidth, 0, 0)).x;
-		batch.draw(akSprite, projectedGunRight, projectedPlayer.y, 16f, 16f, akSprite.getWidth() / 10, akSprite.getHeight() / 10, 1f, 1f, player.lookAngle);
-		
+
+		batch.draw(akSprite, projectedPlayer.x, projectedPlayer.y, 16f, 16f, akSprite.getWidth() / 10,
+				akSprite.getHeight() / 10, 1f, 1f, player.lookAngle);
+
+		// draw gun on left
+		float projectedGunLeft = camera.project(new Vector3(
+				camera.unproject(new Vector3((Gdx.graphics.getWidth() / 2) - 18, 0, 0)).x - level.mapWidth, 0, 0)).x;
+		batch.draw(akSprite, projectedGunLeft, projectedPlayer.y, 16f, 16f, akSprite.getWidth() / 10,
+				akSprite.getHeight() / 10, 1f, 1f, player.lookAngle);
+
+		// draw gun on right
+		float projectedGunRight = camera.project(new Vector3(
+				camera.unproject(new Vector3((Gdx.graphics.getWidth() / 2) - 18, 0, 0)).x + level.mapWidth, 0, 0)).x;
+		batch.draw(akSprite, projectedGunRight, projectedPlayer.y, 16f, 16f, akSprite.getWidth() / 10,
+				akSprite.getHeight() / 10, 1f, 1f, player.lookAngle);
+
 		batch.end();
 		if (!player.facesRight) {
 			akSprite.flip(false, true);
 		}
 	}
-	
+
 	private void renderCrosshair(float deltaTime) {
-//		Gdx.input.setCursorCatched(true);		
+		// Gdx.input.setCursorCatched(true);
 		shapeRenderer.begin(ShapeType.Line);
 		shapeRenderer.setColor(Color.RED);
 		Vector3 literalDest = new Vector3(Gdx.input.getX(), Gdx.input.getY(), 0);

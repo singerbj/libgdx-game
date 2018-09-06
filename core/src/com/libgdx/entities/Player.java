@@ -1,5 +1,7 @@
 package com.libgdx.entities;
 
+import java.util.UUID;
+
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.utils.Array;
 
@@ -30,11 +32,23 @@ public class Player {
 	public float lookAngle = 0;
 	
 	public Player() {
+		System.out.println("-=-Player created");
+		this.id = UUID.randomUUID().toString();
+		Player.WIDTH = 1f; // 1 / 16f; // * regions[0].getRegionWidth();
+		Player.HEIGHT = 2f; // 1 / 16f; // * regions[0].getRegionHeight();
+	}
+	
+	public Player(Vector2 position) {
+		System.out.println("Player created");
+		this.id = UUID.randomUUID().toString();
+		this.position.x = position.x;
+		this.position.y = position.y;
 		Player.WIDTH = 1f; // 1 / 16f; // * regions[0].getRegionWidth();
 		Player.HEIGHT = 2f; // 1 / 16f; // * regions[0].getRegionHeight();
 	}
 	
 	public Player(String id, Vector2 position) {
+		System.out.println("Player created");
 		this.id = id;
 		this.position.x = position.x;
 		this.position.y = position.y;

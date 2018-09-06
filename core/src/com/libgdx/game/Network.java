@@ -21,8 +21,9 @@ public class Network {
 
 	public static class PlayerConnectionResponse {
 		public String id;
+		public Vector2 position;
 	}
-	
+
 	public static class WorldDataResponse {
 		public Array<PlayerDataRequest> playerDataRequests = new Array<PlayerDataRequest>();
 	}
@@ -31,9 +32,10 @@ public class Network {
 		public String playerId;
 		public Vector2 position;
 		public Vector2 velocity;
-		
-		public PlayerDataRequest() {}
-		
+
+		public PlayerDataRequest() {
+		}
+
 		public PlayerDataRequest(String playerId, Vector2 position, Vector2 velocity) {
 			this.playerId = playerId;
 			this.position = position;
@@ -68,17 +70,24 @@ public class Network {
 			server.addListener(new BetterListener(player, players, shots) {
 				public void received(Connection connection, Object object) {
 					if (object instanceof PlayerConnectionRequest) {
-						System.out.println("=== server recieved PlayerConnectionRequest");
+						System.out.println("=*= server recieved PlayerConnectionRequest");
+						Player newPlayer = new Player(new Vector2(50, 50));
+						players.add(newPlayer);		
+						System.out.println("=*=" + newPlayer.id);
+
 						PlayerConnectionResponse response = new PlayerConnectionResponse();
-						response.id = UUID.randomUUID().toString();
-						players.add(new Player(response.id, new Vector2(50, 50)));
+						response.id = newPlayer.id;
+						response.position.x = newPlayer.position.x;
+						response.position.y = newPlayer.position.y;
 						connection.sendTCP(response);
 					} else if (object instanceof PlayerDataRequest) {
-//						System.out.println("=== server recieved PlayerDataRequest");
+						// System.out.println("=*= server recieved PlayerDataRequest");
 						PlayerDataRequest request = (PlayerDataRequest) object;
 						WorldDataResponse response = new WorldDataResponse();
 						// TODO: loop this different, or use a map maybe?
-						for (Player otherPlayer : players) {
+						Player otherPlayer;
+						for (int i = 0; i < players.size; i++) {
+							otherPlayer = players.get(i);
 							if (otherPlayer.id.equals(request.playerId) && !otherPlayer.id.equals(player.id)) {
 								// TODO: interpolate this or something?
 								otherPlayer.velocity.x = request.velocity.x;
@@ -87,11 +96,12 @@ public class Network {
 								otherPlayer.position.y = request.position.y;
 								break;
 							}
-							
-							response.playerDataRequests.add(new PlayerDataRequest(otherPlayer.id, otherPlayer.position, otherPlayer.velocity)); 
+
+							response.playerDataRequests.add(
+									new PlayerDataRequest(otherPlayer.id, otherPlayer.position, otherPlayer.velocity));
 						}
 					} else if (object instanceof ShotDataRequest) {
-						System.out.println("=== server recieved ShotDataRequest");
+						System.out.println("=*= server recieved ShotDataRequest");
 						// TODO: this
 					}
 				}
@@ -107,27 +117,25 @@ public class Network {
 			public void received(Connection connection, Object object) {
 				if (object instanceof PlayerConnectionResponse) {
 					PlayerConnectionResponse response = (PlayerConnectionResponse) object;
-					System.out.println("=== client recieved PlayerConnectionResponse");
-					player.id = response.id.toString();
-					player.position.x = 50;
-					player.position.y = 50;
+					System.out.println("=*= client recieved PlayerConnectionResponse");
+					player = new Player(response.id.toString(), response.position);
 				} else if (object instanceof WorldDataResponse) {
 					WorldDataResponse response = (WorldDataResponse) object;
-//					System.out.println("=== client recieved WorldDataResponse");
-					
+					// System.out.println("=*= client recieved WorldDataResponse");
+
 				}
 			}
 		});
 
 		client.sendTCP(new PlayerConnectionRequest());
 	}
-	
+
 	public void sendPlayerData(String playerId, Vector2 playerPosition, Vector2 playerVelocity) {
 		client.sendTCP(new PlayerDataRequest(playerId, playerPosition, playerVelocity));
 	}
-	
+
 	public void sendShotData() {
-		
+
 	}
 
 	public void shutdownNetwork() {

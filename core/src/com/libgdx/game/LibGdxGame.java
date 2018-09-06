@@ -94,8 +94,7 @@ public class LibGdxGame extends ApplicationAdapter {
 		// network related variables initialized
 		shots = new Array<Shot>();
 		players = new Array<Player>();
-		player = new Player();
-		System.out.println(args);
+
 		try {
 			network = new Network(args.contains("server", false), player, players, shots);
 		} catch (IOException e) {

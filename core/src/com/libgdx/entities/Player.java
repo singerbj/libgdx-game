@@ -32,14 +32,14 @@ public class Player {
 	public float lookAngle = 0;
 	
 	public Player() {
-		System.out.println("-=-Player created");
+		System.out.println("-=1=-Player created");
 		this.id = UUID.randomUUID().toString();
 		Player.WIDTH = 1f; // 1 / 16f; // * regions[0].getRegionWidth();
 		Player.HEIGHT = 2f; // 1 / 16f; // * regions[0].getRegionHeight();
 	}
 	
 	public Player(Vector2 position) {
-		System.out.println("Player created");
+		System.out.println("-=2=-Player created");
 		this.id = UUID.randomUUID().toString();
 		this.position.x = position.x;
 		this.position.y = position.y;
@@ -48,7 +48,7 @@ public class Player {
 	}
 	
 	public Player(String id, Vector2 position) {
-		System.out.println("Player created");
+		System.out.println("-=3=-Player created");
 		this.id = id;
 		this.position.x = position.x;
 		this.position.y = position.y;

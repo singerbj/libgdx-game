@@ -260,7 +260,7 @@ public class LibGdxGame extends ApplicationAdapter {
 
 				if ((gunFired || player.gun.fireGun(TimeUtils.millis()))) {
 					gunFired = true;
-					tempShot = rayCastHelper.rayTest(player.stateTime, src, dest, level.walls);
+					tempShot = rayCastHelper.rayTest(player.stateTime, src, dest, getCollideableRectangles());
 					if (tempShot != null && (shot == null || tempShot.getDistance() < shot.getDistance())) {
 						shot = tempShot;
 					}
@@ -429,6 +429,17 @@ public class LibGdxGame extends ApplicationAdapter {
 		}
 
 		player.updateLeftRightPositions(level.mapWidth);
+	}
+
+	private Array<Rectangle> getCollideableRectangles() {
+		Array<Rectangle> rectangles = new Array<Rectangle>();
+		rectangles.addAll(level.walls);
+		for(Player player : players) {
+			if(!player.id.equals(this.player.id)) {
+				rectangles.addAll(player.getRects());
+			}
+		}
+		return rectangles;
 	}
 
 	private void renderPlayers(float deltaTime) {

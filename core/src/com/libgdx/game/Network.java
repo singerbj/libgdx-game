@@ -11,6 +11,7 @@ import com.esotericsoftware.kryonet.Connection;
 import com.esotericsoftware.kryonet.Listener;
 import com.esotericsoftware.kryonet.Server;
 import com.libgdx.entities.Player;
+import com.libgdx.helpers.Util;
 
 public class Network {
 	public Server server;
@@ -68,7 +69,7 @@ public class Network {
 				public void received(Connection connection, Object object) {
 					if (object instanceof PlayerConnectionRequest) {
 						System.out.println("=*= server recieved PlayerConnectionRequest");
-						Player newPlayer = new Player(new Vector2(50, 50));
+						Player newPlayer = new Player(new Vector2(Util.randomInt(0, 50), 50));
 						players.add(newPlayer);		
 						System.out.println("=*=" + newPlayer.id);
 

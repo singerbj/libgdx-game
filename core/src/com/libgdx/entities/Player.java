@@ -2,6 +2,7 @@ package com.libgdx.entities;
 
 import java.util.UUID;
 
+import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.utils.Array;
 
@@ -69,5 +70,13 @@ public class Player {
 		this.leftPosition.x = this.position.x - mapWidth;
 		this.rightPosition.y = this.position.y;
 		this.leftPosition.y = this.position.y;
+	}
+	
+	public Array<Rectangle> getRects(){
+		Array<Rectangle> rects = new Array<Rectangle>();
+		rects.add(new Rectangle(this.position.x, this.position.y, Player.WIDTH, Player.HEIGHT));
+		rects.add(new Rectangle(this.leftPosition.x, this.position.y, Player.WIDTH, Player.HEIGHT));
+		rects.add(new Rectangle(this.rightPosition.x, this.position.y, Player.WIDTH, Player.HEIGHT));
+		return rects;
 	}
 }

@@ -9,20 +9,23 @@ import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.math.Vector3;
 import com.badlogic.gdx.math.collision.Segment;
 import com.badlogic.gdx.utils.Array;
+import com.libgdx.game.Collidable;
 import com.libgdx.game.Shot;
 
 public class RayCastHelper {
 	Intersector intersector = new Intersector();
 
-	public Shot rayTest(float time, Vector2 source, Vector2 dest, Array<Rectangle> array) {
+	public Shot rayTest(float time, Vector2 source, Vector2 dest, Array<Collidable> array) {
 		// check all rects to see which intersect
-		HashMap<Segment, Rectangle> vectorRectMap = new HashMap<Segment, Rectangle>();
-		for (Rectangle r : array) {
+		HashMap<Segment, Collidable> vectorRectMap = new HashMap<Segment, Collidable>();
+		Rectangle r;
+		for (Collidable c : array) {
+			r = c.rectangle;
 			if (Intersector.intersectSegmentPolygon(source, dest, rectangleToPolygon(r))) {
-				vectorRectMap.put(new Segment(new Vector3(r.x, r.y, 0), new Vector3(r.x + r.width, r.y, 0)), r);
-				vectorRectMap.put(new Segment(new Vector3(r.x + r.width, r.y, 0), new Vector3(r.x + r.width, r.y + r.height, 0)), r);
-				vectorRectMap.put(new Segment(new Vector3(r.x + r.width, r.y + r.height, 0), new Vector3(r.x, r.y + r.height, 0)), r);
-				vectorRectMap.put(new Segment(new Vector3(r.x, r.y + r.height, 0), new Vector3(r.x, r.y, 0)), r);
+				vectorRectMap.put(new Segment(new Vector3(r.x, r.y, 0), new Vector3(r.x + r.width, r.y, 0)), c);
+				vectorRectMap.put(new Segment(new Vector3(r.x + r.width, r.y, 0), new Vector3(r.x + r.width, r.y + r.height, 0)), c);
+				vectorRectMap.put(new Segment(new Vector3(r.x + r.width, r.y + r.height, 0), new Vector3(r.x, r.y + r.height, 0)), c);
+				vectorRectMap.put(new Segment(new Vector3(r.x, r.y + r.height, 0), new Vector3(r.x, r.y, 0)), c);
 			}
 		}
 

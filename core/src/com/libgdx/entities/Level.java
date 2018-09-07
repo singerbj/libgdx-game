@@ -10,6 +10,7 @@ import com.badlogic.gdx.maps.tiled.TiledMapTileLayer.Cell;
 import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.utils.Array;
 import com.badlogic.gdx.utils.Pool;
+import com.libgdx.game.Collidable;
 import com.libgdx.game.LoopingOrthogonalTiledMapRenderer;
 
 public class Level {
@@ -17,7 +18,7 @@ public class Level {
 	public float mapWidth;
 	public float mapHeight;
 	public LoopingOrthogonalTiledMapRenderer renderer;
-	public Array<Rectangle> walls = new Array<Rectangle>();
+	public Array<Collidable> walls = new Array<Collidable>();
 	public Array<Rectangle> ladders = new Array<Rectangle>();
 	private Pool<Rectangle> rectPool = new Pool<Rectangle>() {
 		@Override
@@ -35,7 +36,9 @@ public class Level {
 		mapHeight = ((TiledMapTileLayer) map.getLayers().get(0)).getHeight();
 		renderer = new LoopingOrthogonalTiledMapRenderer(map, 1 / 70f);
 		
-		walls = getTiles("walls", 0, 0, (int) mapWidth, (int) mapHeight);
+		for(Rectangle r : getTiles("walls", 0, 0, (int) mapWidth, (int) mapHeight)) {
+			walls.add(new Collidable(r, null));
+		}
 		ladders = getTiles("ladders", 0, 0, (int) mapWidth, (int) mapHeight);
 	}
 	

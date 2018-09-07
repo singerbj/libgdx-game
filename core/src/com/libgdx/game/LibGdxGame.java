@@ -173,7 +173,10 @@ public class LibGdxGame extends ApplicationAdapter {
 
 			// render the crosshair
 			renderCrosshair(deltaTime);
-
+			
+			// render the hud
+			renderHud(deltaTime);
+			
 			// render debug shapes
 			if (debug) {
 				debugHelper.renderDebug();
@@ -260,12 +263,15 @@ public class LibGdxGame extends ApplicationAdapter {
 
 				if ((gunFired || player.gun.fireGun(TimeUtils.millis()))) {
 					gunFired = true;
-					tempShot = rayCastHelper.rayTest(player.stateTime, src, dest, getCollideableRectangles());
+					tempShot = rayCastHelper.rayTest(player.stateTime, src, dest, getCollideables());
 					if (tempShot != null && (shot == null || tempShot.getDistance() < shot.getDistance())) {
 						shot = tempShot;
 					}
 					if (shot.getCollideableObject() != null) {
-						debugTiles.add(shot.getCollideableObject());
+						debugTiles.add(shot.getCollideableObject().rectangle);
+						if (shot.getCollideableObject().player != null) {
+							shot.getCollideableObject().player.takeDamage(player.gun.DAMAGE);
+						}
 					}
 
 				}
@@ -350,8 +356,9 @@ public class LibGdxGame extends ApplicationAdapter {
 		endY = (int) (player.position.y + Player.HEIGHT);
 
 		playerRect.x += player.velocity.x;
-		for (Rectangle tile : level.walls) {
-			if (playerRect.overlaps(tile)) {
+
+		for (Collidable wall : level.walls) {
+			if (playerRect.overlaps(wall.rectangle)) {
 				player.velocity.x = 0;
 				break;
 			}
@@ -397,13 +404,13 @@ public class LibGdxGame extends ApplicationAdapter {
 		}
 
 		playerRect.y += player.velocity.y;
-		for (Rectangle tile : level.walls) {
-			if (playerRect.overlaps(tile)) {
+		for (Collidable wall : level.walls) {
+			if (playerRect.overlaps(wall.rectangle)) {
 				// we actually reset the player y-position here
 				// so it is just below/above the tile we collided with
 				// this removes bouncing :)
 				if (player.velocity.y <= 0) {
-					player.position.y = tile.y + tile.height;
+					player.position.y = wall.rectangle.y + wall.rectangle.height;
 					// if we hit the ground, mark us as grounded so we can jump
 					player.grounded = true;
 				}
@@ -431,15 +438,15 @@ public class LibGdxGame extends ApplicationAdapter {
 		player.updateLeftRightPositions(level.mapWidth);
 	}
 
-	private Array<Rectangle> getCollideableRectangles() {
-		Array<Rectangle> rectangles = new Array<Rectangle>();
-		rectangles.addAll(level.walls);
+	private Array<Collidable> getCollideables() {
+		Array<Collidable> collidables = new Array<Collidable>();
+		collidables.addAll(level.walls);
 		for(Player player : players) {
 			if(!player.id.equals(this.player.id)) {
-				rectangles.addAll(player.getRects());
+				collidables.addAll(player.getCollidables());
 			}
 		}
-		return rectangles;
+		return collidables;
 	}
 
 	private void renderPlayers(float deltaTime) {
@@ -528,6 +535,12 @@ public class LibGdxGame extends ApplicationAdapter {
 		shapeRenderer.line(literalDest.x + 0.5f, literalDest.y, literalDest.x - 0.5f, literalDest.y);
 		shapeRenderer.line(literalDest.x, literalDest.y + 0.5f, literalDest.x, literalDest.y - 0.5f);
 		shapeRenderer.end();
+	}
+	
+	private void renderHud(float deltaTime) {
+		batch.begin();
+		font.draw(batch, "Health: " + (player.health / Player.MAX_HEALTH) * 100, 3, Gdx.graphics.getHeight() - 20);
+		batch.end();
 	}
 
 	@Override

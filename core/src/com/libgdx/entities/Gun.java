@@ -8,6 +8,7 @@ public class Gun {
 	public final long MAX_AMMO = 30; //30
 	public final long MS_TO_RELOAD = 2000;
 	public final long RANGE = 100;
+	public final long DAMAGE = 100;
 	
 	public long currentAmmo = MAX_AMMO;
 	public long lastShotTime = 0;

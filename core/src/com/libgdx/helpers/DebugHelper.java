@@ -11,6 +11,7 @@ import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.utils.Array;
 import com.libgdx.entities.Level;
 import com.libgdx.entities.Player;
+import com.libgdx.game.Collidable;
 
 public class DebugHelper {
 	OrthographicCamera camera;
@@ -35,8 +36,8 @@ public class DebugHelper {
 		shapeRenderer.rect(player.position.x, player.position.y, Player.WIDTH, Player.HEIGHT);
 
 		shapeRenderer.setColor(Color.YELLOW);
-		for(Rectangle rect : level.walls) {
-			shapeRenderer.rect(rect.x, rect.y, rect.width, rect.height);
+		for(Collidable collidable : level.walls) {
+			shapeRenderer.rect(collidable.rectangle.x, collidable.rectangle.y, collidable.rectangle.width, collidable.rectangle.height);
 		}
 		
 		shapeRenderer.setColor(Color.PURPLE);

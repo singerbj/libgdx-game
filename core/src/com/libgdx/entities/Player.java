@@ -5,6 +5,7 @@ import java.util.UUID;
 import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.utils.Array;
+import com.libgdx.game.Collidable;
 
 public class Player {
 	/** The player character, has state and state time, */
@@ -14,6 +15,7 @@ public class Player {
 	public static float MAX_VELOCITY = 5f;
 	public static float JUMP_VELOCITY = 20;
 	public static float DAMPING = 0.87f;
+	public static float MAX_HEALTH = 1000f;
 
 	public enum State {
 		Standing, Walking, Jumping
@@ -31,6 +33,8 @@ public class Player {
 	public boolean onLadder = false;
 	public Gun gun = new Gun();
 	public float lookAngle = 0;
+	
+	public float health = 1000;
 	
 	public Player() {
 		System.out.println("-=1=-Player created");
@@ -72,11 +76,27 @@ public class Player {
 		this.leftPosition.y = this.position.y;
 	}
 	
-	public Array<Rectangle> getRects(){
-		Array<Rectangle> rects = new Array<Rectangle>();
-		rects.add(new Rectangle(this.position.x, this.position.y, Player.WIDTH, Player.HEIGHT));
-		rects.add(new Rectangle(this.leftPosition.x, this.position.y, Player.WIDTH, Player.HEIGHT));
-		rects.add(new Rectangle(this.rightPosition.x, this.position.y, Player.WIDTH, Player.HEIGHT));
-		return rects;
+//	public Array<Rectangle> getRects(){
+//		Array<Rectangle> rects = new Array<Rectangle>();
+//		rects.add(new Rectangle(this.position.x, this.position.y, Player.WIDTH, Player.HEIGHT));
+//		rects.add(new Rectangle(this.leftPosition.x, this.position.y, Player.WIDTH, Player.HEIGHT));
+//		rects.add(new Rectangle(this.rightPosition.x, this.position.y, Player.WIDTH, Player.HEIGHT));
+//		return rects;
+//	}
+
+	public Array<Collidable> getCollidables() {
+		Array<Collidable> collidables = new Array<Collidable>();
+		collidables.add(new Collidable(new Rectangle(this.position.x, this.position.y, Player.WIDTH, Player.HEIGHT), this));
+		collidables.add(new Collidable(new Rectangle(this.leftPosition.x, this.position.y, Player.WIDTH, Player.HEIGHT), this));
+		collidables.add(new Collidable(new Rectangle(this.rightPosition.x, this.position.y, Player.WIDTH, Player.HEIGHT), this));
+		return collidables;	
+	}
+
+	public void takeDamage(long damage) {
+		if (damage < this.health ) {
+			this.health = this.health - damage;
+		} else {
+			this.health = 0;
+		}
 	}
 }

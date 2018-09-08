@@ -1,16 +1,19 @@
 package com.libgdx.game;
 
 import java.io.IOException;
-import java.util.UUID;
+import java.util.HashMap;
 
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.utils.Array;
 import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryonet.Client;
 import com.esotericsoftware.kryonet.Connection;
+import com.esotericsoftware.kryonet.EndPoint;
 import com.esotericsoftware.kryonet.Listener;
 import com.esotericsoftware.kryonet.Server;
+import com.libgdx.entities.Gun;
 import com.libgdx.entities.Player;
+import com.libgdx.helpers.PlayerState;
 import com.libgdx.helpers.Util;
 
 public class Network {
@@ -26,31 +29,26 @@ public class Network {
 	}
 
 	public static class WorldDataResponse {
-		public Array<PlayerDataRequest> playerDataRequests = new Array<PlayerDataRequest>();
-//		public Array<PlayerDataRequest> playerDataRequests = new Array<PlayerDataRequest>();
+		public HashMap<String, Player> players = new HashMap<String, Player>();
 	}
 
 	public static class PlayerDataRequest {
-		public String playerId;
-		public Vector2 position = new Vector2();
-		public Vector2 velocity;
+		public Player player;
 
 		public PlayerDataRequest() {
 		}
 
-		public PlayerDataRequest(String playerId, Vector2 position, Vector2 velocity) {
-			this.playerId = playerId;
-			this.position = position;
-			this.velocity = velocity;
+		public PlayerDataRequest(Player player) {
+			this.player = player;
 		}
 	}
 
 	public class BetterListener extends Listener {
 		public Player player;
-		public Array<Player> players;
+		public HashMap<String, Player> players;
 		public Array<Shot> shots;
 
-		public BetterListener(Player localPlayer, Array<Player> players, Array<Shot> shots) {
+		public BetterListener(Player localPlayer, HashMap<String, Player> players, Array<Shot> shots) {
 			super();
 			this.player = localPlayer;
 			this.players = players;
@@ -58,10 +56,10 @@ public class Network {
 		}
 	}
 
-	public Network(boolean isHost, Player localPlayer, Array<Player> players, Array<Shot> shots) throws IOException {
+	public Network(boolean isHost, final Player localPlayer, HashMap<String, Player> players, Array<Shot> shots) throws IOException {
 		if (isHost) {
 			server = new Server();
-			registerServerClasses(server);
+			registerClasses(server);
 			server.start();
 			server.bind(54545, 54745);
 
@@ -69,8 +67,10 @@ public class Network {
 				public void received(Connection connection, Object object) {
 					if (object instanceof PlayerConnectionRequest) {
 						System.out.println("=*= server recieved PlayerConnectionRequest");
-						Player newPlayer = new Player(new Vector2(Util.randomInt(0, 50), 50));
-						players.add(newPlayer);		
+						Player newPlayer = new Player();
+						newPlayer.position.x = Util.randomInt(0, 50);
+						newPlayer.position.y = 50;
+						players.put(newPlayer.id, newPlayer);		
 						System.out.println("=*=" + newPlayer.id);
 
 						PlayerConnectionResponse response = new PlayerConnectionResponse();
@@ -79,35 +79,23 @@ public class Network {
 						response.position.y = newPlayer.position.y;
 						connection.sendTCP(response);
 					} else if (object instanceof PlayerDataRequest) {
-						// System.out.println("=*= server recieved PlayerDataRequest");
+						System.out.println("=*= server recieved PlayerDataRequest");
 						PlayerDataRequest request = (PlayerDataRequest) object;
-						WorldDataResponse response = new WorldDataResponse();
-						// TODO: loop this different, or use a map maybe?
-						Player otherPlayer;
-						for (int i = 0; i < players.size; i++) {
-							otherPlayer = players.get(i);
-							if (otherPlayer.id.equals(request.playerId)){ // && !otherPlayer.id.equals(player.id)) {
-								// TODO: interpolate this or something?
-								otherPlayer.velocity.x = request.velocity.x;
-								otherPlayer.velocity.y = request.velocity.y;
-								otherPlayer.position.x = request.position.x;
-								otherPlayer.position.y = request.position.y;
-								break;
-							}
-							response.playerDataRequests.add(new PlayerDataRequest(otherPlayer.id, otherPlayer.position, otherPlayer.velocity));
+						Player otherPlayer = players.get(request.player.id);
+						if (otherPlayer != null && !otherPlayer.id.equals(player.id)) {
+							// TODO: interpolate this or something?
+							otherPlayer.velocity.x = request.player.velocity.x;
+							otherPlayer.velocity.y = request.player.velocity.y;
+							otherPlayer.position.x = request.player.position.x;
+							otherPlayer.position.y = request.player.position.y;
 						}
-						connection.sendTCP(response);
 					} 
-//					else if (object instanceof ShotDataRequest) {
-//						System.out.println("=*= server recieved ShotDataRequest");
-//						// TODO: this
-//					}
 				}
 			});
 		}
 
 		client = new Client();
-		registerClientClasses(client);
+		registerClasses(client);
 		client.start();
 		client.connect(5000, "127.0.0.1", 54545, 54745);
 
@@ -116,34 +104,22 @@ public class Network {
 				if (object instanceof PlayerConnectionResponse) {
 					PlayerConnectionResponse response = (PlayerConnectionResponse) object;
 					System.out.println("=*= client recieved PlayerConnectionResponse");
-//					player = new Player(response.id.toString(), response.position);
-					player.id = response.id.toString();
-					player.position.x = response.position.x;
-					player.position.y = response.position.y;
+					localPlayer.id = response.id.toString();
+					localPlayer.position.x = response.position.x;
+					localPlayer.position.y = response.position.y;
 				} else if (object instanceof WorldDataResponse) {
 					WorldDataResponse response = (WorldDataResponse) object;
-//					System.out.println("=*= client recieved WorldDataResponse");
-					PlayerDataRequest playerDataRequest;
-					Player otherPlayer;
-					boolean found;
-					for (int i = 0; i < response.playerDataRequests.size; i++) {
-						playerDataRequest = response.playerDataRequests.get(i);
-						found = false;
-						for (int j = 0; j < players.size; j++) {
-							otherPlayer = players.get(j);
-							if (otherPlayer.id.equals(playerDataRequest.playerId) && !otherPlayer.id.equals(player.id)) {
-								// TODO: interpolate this or something?
-								otherPlayer.velocity.x = playerDataRequest.velocity.x;
-								otherPlayer.velocity.y = playerDataRequest.velocity.y;
-								otherPlayer.position.x = playerDataRequest.position.x;
-								otherPlayer.position.y = playerDataRequest.position.y;
-								found = true;
-								break;
-							}
-						}
-						
-						if (!found) {
-							players.add(new Player(playerDataRequest.playerId, playerDataRequest.position));
+					System.out.println("=*= client recieved WorldDataResponse");
+					Player playerFromMap;
+					String[] keys = (String[]) response.players.keySet().toArray();
+					for (int i = 0; i < keys.length; i++) {
+						playerFromMap = players.get(keys[i]);
+						if (!playerFromMap.id.equals(player.id)) {
+							// TODO: interpolate this or something?
+							players.get(playerFromMap.id).velocity.x = playerFromMap.velocity.x;
+							players.get(playerFromMap.id).velocity.y = playerFromMap.velocity.y;
+							players.get(playerFromMap.id).position.x = playerFromMap.position.x;
+							players.get(playerFromMap.id).position.y = playerFromMap.position.y;
 						}
 					}
 
@@ -154,8 +130,12 @@ public class Network {
 		client.sendTCP(new PlayerConnectionRequest());
 	}
 
-	public void sendPlayerData(String playerId, Vector2 playerPosition, Vector2 playerVelocity) {
-		client.sendTCP(new PlayerDataRequest(playerId, playerPosition, playerVelocity));
+	public void sendPlayerData(Player player) {
+		client.sendTCP(new PlayerDataRequest(player));
+	}
+	
+	public void sendWorldData(Player player) {
+		client.sendTCP(new PlayerDataRequest(player));
 	}
 
 	public void sendShotData() {
@@ -183,8 +163,8 @@ public class Network {
 		}
 	}
 
-	private void registerClientClasses(Client client) {
-		Kryo kryo = client.getKryo();
+	private void registerClasses(EndPoint clientOrServer) {
+		Kryo kryo = clientOrServer.getKryo();
 		kryo.register(PlayerConnectionRequest.class);
 		kryo.register(PlayerConnectionResponse.class);
 		kryo.register(PlayerDataRequest.class);
@@ -192,17 +172,8 @@ public class Network {
 		kryo.register(Vector2.class);
 		kryo.register(Array.class);
 		kryo.register(Object[].class);
+		kryo.register(Player.class);
+		kryo.register(Gun.class);
+		kryo.register(PlayerState.class);
 	}
-
-	private void registerServerClasses(Server server) {
-		Kryo kryo = server.getKryo();
-		kryo.register(PlayerConnectionRequest.class);
-		kryo.register(PlayerConnectionResponse.class);
-		kryo.register(PlayerDataRequest.class);
-		kryo.register(WorldDataResponse.class);
-		kryo.register(Vector2.class);
-		kryo.register(Array.class);
-		kryo.register(Object[].class);
-	}
-
 }

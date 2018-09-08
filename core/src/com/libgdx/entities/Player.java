@@ -6,6 +6,7 @@ import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.utils.Array;
 import com.libgdx.game.Collidable;
+import com.libgdx.helpers.PlayerState;
 
 public class Player {
 	/** The player character, has state and state time, */
@@ -17,16 +18,12 @@ public class Player {
 	public static float DAMPING = 0.87f;
 	public static float MAX_HEALTH = 1000f;
 
-	public enum State {
-		Standing, Walking, Jumping
-	}
-
 	public String id;
 	public final Vector2 position = new Vector2();
 	public final Vector2 leftPosition = new Vector2();
 	public final Vector2 rightPosition = new Vector2();
 	public final Vector2 velocity = new Vector2();
-	public State state = State.Walking;
+	public PlayerState state = PlayerState.Walking;
 	public float stateTime = 0;
 	public boolean facesRight = true;
 	public boolean grounded = false;
@@ -43,22 +40,24 @@ public class Player {
 		Player.HEIGHT = 2f; // 1 / 16f; // * regions[0].getRegionHeight();
 	}
 	
-	public Player(Vector2 position) {
-		System.out.println("-=2=-Player created");
-		this.id = UUID.randomUUID().toString();
-		this.position.x = position.x;
-		this.position.y = position.y;
-		Player.WIDTH = 1f; // 1 / 16f; // * regions[0].getRegionWidth();
-		Player.HEIGHT = 2f; // 1 / 16f; // * regions[0].getRegionHeight();
-	}
-	
-	public Player(String id, Vector2 position) {
-		System.out.println("-=3=-Player created");
-		this.id = id;
-		this.position.x = position.x;
-		this.position.y = position.y;
-		Player.WIDTH = 1f; // 1 / 16f; // * regions[0].getRegionWidth();
-		Player.HEIGHT = 2f; // 1 / 16f; // * regions[0].getRegionHeight();
+	public Player(Player newPlayer) {
+		this.id = newPlayer.id;
+		this.position.x = newPlayer.position.x;
+		this.position.y = newPlayer.position.y;
+		this.leftPosition.x = newPlayer.leftPosition.x;
+		this.leftPosition.y = newPlayer.leftPosition.y;
+		this.rightPosition.x = newPlayer.rightPosition.x;
+		this.rightPosition.y = newPlayer.rightPosition.y;
+		this.velocity.x = newPlayer.velocity.x;
+		this.velocity.y = newPlayer.velocity.y;
+		this.state = newPlayer.state;
+		this.stateTime = newPlayer.stateTime;
+		this.facesRight = newPlayer.facesRight;
+		this.grounded = newPlayer.grounded;
+		this.onLadder = newPlayer.onLadder;
+		this.gun = newPlayer.gun;
+		this.lookAngle = newPlayer.lookAngle;
+		this.health = newPlayer.health;
 	}
 
 	public Array<Vector2> getPositions() {

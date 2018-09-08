@@ -2,6 +2,7 @@ package com.libgdx.game;
 
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.Iterator;
 
 import com.badlogic.gdx.ApplicationAdapter;
@@ -26,6 +27,7 @@ import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.graphics.g3d.attributes.PointLightsAttribute;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer.ShapeType;
+import com.badlogic.gdx.maps.Map;
 import com.badlogic.gdx.maps.tiled.TiledMap;
 import com.badlogic.gdx.maps.tiled.TiledMapTileLayer;
 import com.badlogic.gdx.maps.tiled.TiledMapTileLayer.Cell;
@@ -44,6 +46,7 @@ import com.esotericsoftware.kryonet.Server;
 import com.libgdx.entities.Level;
 import com.libgdx.entities.Player;
 import com.libgdx.helpers.DebugHelper;
+import com.libgdx.helpers.PlayerState;
 import com.libgdx.helpers.RayCastHelper;
 
 public class LibGdxGame extends ApplicationAdapter {
@@ -60,7 +63,7 @@ public class LibGdxGame extends ApplicationAdapter {
 	// network related variables
 	private Network network;
 	private Array<Shot> shots;
-	private Array<Player> players;
+	private HashMap<String, Player> players;
 
 	private BitmapFont font;
 	private SpriteBatch batch;
@@ -93,8 +96,8 @@ public class LibGdxGame extends ApplicationAdapter {
 
 		// network related variables initialized
 		shots = new Array<Shot>();
-		players = new Array<Player>();
-
+		players = new HashMap<String, Player>();
+		System.out.println("here");
 		player = new Player();
 		try {
 			network = new Network(args.contains("server", false), player, players, shots);
@@ -185,7 +188,7 @@ public class LibGdxGame extends ApplicationAdapter {
 				batch.end();
 			}
 			
-			network.sendPlayerData(player.id, player.position, player.velocity);
+			network.sendPlayerData(player);
 		}
 	}
 
@@ -206,7 +209,7 @@ public class LibGdxGame extends ApplicationAdapter {
 		if (Gdx.input.isKeyPressed(Keys.SPACE)) {
 			if (player.grounded) {
 				player.velocity.y += Player.JUMP_VELOCITY;
-				player.state = Player.State.Jumping;
+				player.state = PlayerState.Jumping;
 				player.grounded = false;
 			}
 		}
@@ -301,7 +304,7 @@ public class LibGdxGame extends ApplicationAdapter {
 				player.velocity.x = -Player.MAX_VELOCITY * speedMultiplier;
 			}
 			if (player.grounded)
-				player.state = Player.State.Walking;
+				player.state = PlayerState.Walking;
 			// player.facesRight = false;
 		}
 
@@ -311,7 +314,7 @@ public class LibGdxGame extends ApplicationAdapter {
 				player.velocity.x = Player.MAX_VELOCITY * speedMultiplier;
 			}
 			if (player.grounded)
-				player.state = Player.State.Walking;
+				player.state = PlayerState.Walking;
 			// player.facesRight = true;
 		}
 
@@ -334,7 +337,7 @@ public class LibGdxGame extends ApplicationAdapter {
 		if (Math.abs(player.velocity.x) < 1) {
 			player.velocity.x = 0;
 			if (player.grounded)
-				player.state = Player.State.Standing;
+				player.state = PlayerState.Standing;
 		}
 
 		// multiply by delta time so we know how far we go
@@ -375,7 +378,7 @@ public class LibGdxGame extends ApplicationAdapter {
 		for (Rectangle tile : level.ladders) {
 			if (playerRect.overlaps(tile)) {
 				player.onLadder = true;
-				player.state = Player.State.Standing;
+				player.state = PlayerState.Standing;
 				player.velocity.y = 0;
 				break;
 			}
@@ -441,7 +444,9 @@ public class LibGdxGame extends ApplicationAdapter {
 	private Array<Collidable> getCollideables() {
 		Array<Collidable> collidables = new Array<Collidable>();
 		collidables.addAll(level.walls);
-		for(Player player : players) {
+		Player player;
+		for(String key : players.keySet()) {
+			player = players.get(key);
 			if(!player.id.equals(this.player.id)) {
 				collidables.addAll(player.getCollidables());
 			}
@@ -451,7 +456,9 @@ public class LibGdxGame extends ApplicationAdapter {
 
 	private void renderPlayers(float deltaTime) {
 		renderPlayer(deltaTime, player);
-		for (Player otherPlayer : players) {
+		Player otherPlayer;
+		for(String key : players.keySet()) {
+			otherPlayer = players.get(key);
 			if(otherPlayer.id != player.id) {
 				otherPlayer.updateLeftRightPositions(level.mapWidth);
 				renderPlayer(deltaTime, otherPlayer);

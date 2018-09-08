@@ -17,11 +17,11 @@ public class Gun {
 	public long reloadCompleteTime = -99999999;
 	public float reloadPerentage = 0.0f;
 	
-	Sound sound = Gdx.audio.newSound(Gdx.files.internal("audio/AK47_1.mp3"));
+//	Sound sound = Gdx.audio.newSound(Gdx.files.internal("audio/AK47_1.mp3"));
 		
 	public boolean fireGun (long time) {
 		if(!reloading && time > (lastShotTime + MS_BETWEEN_SHOT) && currentAmmo > 0) {
-			sound.play(0.1f);
+//			sound.play(0.1f);
 			lastShotTime = time;
 			currentAmmo = currentAmmo - 1;
 			return true;

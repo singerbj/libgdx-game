@@ -97,8 +97,8 @@ public class LibGdxGame extends ApplicationAdapter {
 		// network related variables initialized
 		shots = new Array<Shot>();
 		players = new HashMap<String, Player>();
-		System.out.println("here");
 		player = new Player();
+		players.put(player.id, player);
 		try {
 			network = new Network(args.contains("server", false), player, players, shots);
 		} catch (IOException e) {
@@ -107,7 +107,7 @@ public class LibGdxGame extends ApplicationAdapter {
 			System.exit(1);
 		}
 
-		playerTexture = new Texture("square.png");
+		playerTexture = new Texture("bettersquare.png");
 		regions = TextureRegion.split(playerTexture, 18, 26)[0];
 		stand = new Animation<TextureRegion>(0, regions[0]);
 
@@ -171,9 +171,6 @@ public class LibGdxGame extends ApplicationAdapter {
 			// render the player
 			renderPlayers(deltaTime);
 
-			// render the gun
-			renderGun(deltaTime);
-
 			// render the crosshair
 			renderCrosshair(deltaTime);
 			
@@ -188,7 +185,12 @@ public class LibGdxGame extends ApplicationAdapter {
 				batch.end();
 			}
 			
-			network.sendPlayerData(player);
+			if(network.server != null) {
+				network.sendWorldData(players);
+			} else {
+				network.sendPlayerData(player);
+			}
+			
 		}
 	}
 
@@ -456,12 +458,14 @@ public class LibGdxGame extends ApplicationAdapter {
 
 	private void renderPlayers(float deltaTime) {
 		renderPlayer(deltaTime, player);
+		renderGun(deltaTime, player);
 		Player otherPlayer;
 		for(String key : players.keySet()) {
 			otherPlayer = players.get(key);
 			if(otherPlayer.id != player.id) {
 				otherPlayer.updateLeftRightPositions(level.mapWidth);
 				renderPlayer(deltaTime, otherPlayer);
+				renderGun(deltaTime, otherPlayer);
 			}
 		}
 	}
@@ -503,8 +507,8 @@ public class LibGdxGame extends ApplicationAdapter {
 		}
 		rendererBatch.end();
 	}
-
-	private void renderGun(float deltaTime) { // USE THIS IF CAMERA STAYS AT CONSTANT Y
+	
+	private void renderGun(float deltaTime, Player player) { // USE THIS IF CAMERA STAYS AT CONSTANT Y
 		batch.begin();
 		if (!player.facesRight) {
 			akSprite.flip(false, true);

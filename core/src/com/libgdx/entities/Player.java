@@ -8,11 +8,13 @@ import com.badlogic.gdx.utils.Array;
 import com.libgdx.game.Collidable;
 import com.libgdx.helpers.PlayerState;
 
+import network_entities.NetworkPlayer;
+
 public class Player {
 	/** The player character, has state and state time, */
 
-	public static float WIDTH;
-	public static float HEIGHT;
+	public static float WIDTH = 1f;  // 1 / 16f; // * regions[0].getRegionWidth()
+	public static float HEIGHT = 2f; // 1 / 16f; // * regions[0].getRegionHeight();
 	public static float MAX_VELOCITY = 5f;
 	public static float JUMP_VELOCITY = 20;
 	public static float DAMPING = 0.87f;
@@ -36,28 +38,19 @@ public class Player {
 	public Player() {
 		System.out.println("-=1=-Player created");
 		this.id = UUID.randomUUID().toString();
-		Player.WIDTH = 1f; // 1 / 16f; // * regions[0].getRegionWidth();
-		Player.HEIGHT = 2f; // 1 / 16f; // * regions[0].getRegionHeight();
 	}
 	
-	public Player(Player newPlayer) {
-		this.id = newPlayer.id;
-		this.position.x = newPlayer.position.x;
-		this.position.y = newPlayer.position.y;
-		this.leftPosition.x = newPlayer.leftPosition.x;
-		this.leftPosition.y = newPlayer.leftPosition.y;
-		this.rightPosition.x = newPlayer.rightPosition.x;
-		this.rightPosition.y = newPlayer.rightPosition.y;
-		this.velocity.x = newPlayer.velocity.x;
-		this.velocity.y = newPlayer.velocity.y;
-		this.state = newPlayer.state;
-		this.stateTime = newPlayer.stateTime;
-		this.facesRight = newPlayer.facesRight;
-		this.grounded = newPlayer.grounded;
-		this.onLadder = newPlayer.onLadder;
-		this.gun = newPlayer.gun;
-		this.lookAngle = newPlayer.lookAngle;
-		this.health = newPlayer.health;
+	public Player(NetworkPlayer networkPlayer) {
+		System.out.println("-=2=-Player created");
+		this.id = networkPlayer.id;
+		this.position.x = networkPlayer.positionX;
+		this.position.y = networkPlayer.positionY;
+		this.velocity.x = networkPlayer.velocityX;
+		this.velocity.y = networkPlayer.velocityY;
+		this.state = networkPlayer.state;
+		this.facesRight = networkPlayer.facesRight;
+//		this.gunId = networkPlayer.gun.GUN_ID; // TODO: fix this by making a map of all the weapons
+		this.lookAngle = networkPlayer.lookAngle;
 	}
 
 	public Array<Vector2> getPositions() {
@@ -97,5 +90,9 @@ public class Player {
 		} else {
 			this.health = 0;
 		}
+	}
+	
+	public NetworkPlayer getNetworkPlayer() {		 
+		return new NetworkPlayer(this);		
 	}
 }

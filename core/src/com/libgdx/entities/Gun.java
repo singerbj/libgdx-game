@@ -4,6 +4,7 @@ import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.audio.Sound;
 
 public class Gun {
+	public final long GUN_ID = 1;
 	public final long MS_BETWEEN_SHOT = 100; //100
 	public final long MAX_AMMO = 30; //30
 	public final long MS_TO_RELOAD = 2000;

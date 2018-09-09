@@ -2,6 +2,8 @@ package com.libgdx.entities;
 
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.audio.Sound;
+import com.badlogic.gdx.graphics.Texture;
+import com.badlogic.gdx.graphics.g2d.Sprite;
 
 public class Gun {
 	public final long GUN_ID = 1;
@@ -17,6 +19,9 @@ public class Gun {
 	public boolean reloading = false;
 	public long reloadCompleteTime = -99999999;
 	public float reloadPerentage = 0.0f;
+	
+	public Texture gunImage = new Texture("ak47.png");
+	public Sprite gunSprite = new Sprite(gunImage);
 	
 //	Sound sound = Gdx.audio.newSound(Gdx.files.internal("audio/AK47_1.mp3"));
 		

@@ -2,6 +2,9 @@ package com.libgdx.entities;
 
 import java.util.UUID;
 
+import com.badlogic.gdx.graphics.Texture;
+import com.badlogic.gdx.graphics.g2d.Animation;
+import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.utils.Array;
@@ -19,6 +22,13 @@ public class Player {
 	public static float JUMP_VELOCITY = 20;
 	public static float DAMPING = 0.87f;
 	public static float MAX_HEALTH = 1000f;
+	
+	public Texture playerTexture = new Texture("bettersquare.png");
+	public TextureRegion[] regions = TextureRegion.split(playerTexture, 18, 26)[0];
+	public Animation<TextureRegion> stand = new Animation<TextureRegion>(0, regions[0]);
+	public Animation<TextureRegion> jump = new Animation<TextureRegion>(0, regions[1]);
+	public Animation<TextureRegion> walk = new Animation<TextureRegion>(0.15f, regions[2], regions[3], regions[4]);
+	
 
 	public String id;
 	public final Vector2 position = new Vector2();
@@ -32,12 +42,12 @@ public class Player {
 	public boolean onLadder = false;
 	public Gun gun = new Gun();
 	public float lookAngle = 0;
-	
 	public float health = 1000;
 	
 	public Player() {
 		System.out.println("-=1=-Player created");
 		this.id = UUID.randomUUID().toString();
+		walk.setPlayMode(Animation.PlayMode.LOOP_PINGPONG);
 	}
 	
 	public Player(NetworkPlayer networkPlayer) {
@@ -51,6 +61,7 @@ public class Player {
 		this.facesRight = networkPlayer.facesRight;
 //		this.gunId = networkPlayer.gun.GUN_ID; // TODO: fix this by making a map of all the weapons
 		this.lookAngle = networkPlayer.lookAngle;
+		walk.setPlayMode(Animation.PlayMode.LOOP_PINGPONG);
 	}
 
 	public Array<Vector2> getPositions() {

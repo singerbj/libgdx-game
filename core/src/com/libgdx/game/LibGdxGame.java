@@ -1,48 +1,27 @@
 package com.libgdx.game;
 
 import java.io.IOException;
-import java.util.Arrays;
 import java.util.HashMap;
-import java.util.Iterator;
-
 import com.badlogic.gdx.ApplicationAdapter;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Input.Keys;
-import com.badlogic.gdx.audio.Music;
-import com.badlogic.gdx.audio.Sound;
 import com.badlogic.gdx.graphics.Color;
-import com.badlogic.gdx.graphics.Cursor;
-import com.badlogic.gdx.graphics.Cursor.SystemCursor;
 import com.badlogic.gdx.graphics.GL20;
-import com.badlogic.gdx.graphics.GL30;
 import com.badlogic.gdx.graphics.OrthographicCamera;
-import com.badlogic.gdx.graphics.Pixmap;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.Animation;
 import com.badlogic.gdx.graphics.g2d.Batch;
 import com.badlogic.gdx.graphics.g2d.BitmapFont;
-import com.badlogic.gdx.graphics.g2d.Sprite;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
-import com.badlogic.gdx.graphics.g3d.attributes.PointLightsAttribute;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer.ShapeType;
-import com.badlogic.gdx.maps.Map;
-import com.badlogic.gdx.maps.tiled.TiledMap;
-import com.badlogic.gdx.maps.tiled.TiledMapTileLayer;
-import com.badlogic.gdx.maps.tiled.TiledMapTileLayer.Cell;
-import com.badlogic.gdx.maps.tiled.TmxMapLoader;
-import com.badlogic.gdx.maps.tiled.renderers.OrthogonalTiledMapRenderer;
 import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.math.Rectangle;
-import com.badlogic.gdx.math.Vector;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.math.Vector3;
-import com.badlogic.gdx.math.collision.Ray;
 import com.badlogic.gdx.utils.Array;
-import com.badlogic.gdx.utils.Pool;
 import com.badlogic.gdx.utils.TimeUtils;
-import com.esotericsoftware.kryonet.Server;
 import com.libgdx.entities.Level;
 import com.libgdx.entities.Player;
 import com.libgdx.helpers.DebugHelper;
@@ -54,9 +33,6 @@ public class LibGdxGame extends ApplicationAdapter {
 	
 	private Level level;
 	private OrthographicCamera camera;
-
-	private Texture ak;
-	private Sprite akSprite;
 
 	private Player player;
 
@@ -76,11 +52,7 @@ public class LibGdxGame extends ApplicationAdapter {
 	ShapeRenderer shapeRenderer;
 	private RayCastHelper rayCastHelper;
 
-	private Texture playerTexture;
-	private TextureRegion[] regions;
-	public Animation<TextureRegion> stand;
-	public Animation<TextureRegion> jump;
-	public Animation<TextureRegion> walk;
+	
 	
 	public LibGdxGame(String[] args) {
 		super();
@@ -89,11 +61,6 @@ public class LibGdxGame extends ApplicationAdapter {
 
 	@Override
 	public void create() {
-		// load the player frames, split them, and assign them to Animations
-
-		ak = new Texture("ak47.png");
-		akSprite = new Sprite(ak);
-
 		// network related variables initialized
 		shots = new Array<Shot>();
 		players = new HashMap<String, Player>();
@@ -106,14 +73,6 @@ public class LibGdxGame extends ApplicationAdapter {
 			e.printStackTrace();
 			System.exit(1);
 		}
-
-		playerTexture = new Texture("bettersquare.png");
-		regions = TextureRegion.split(playerTexture, 18, 26)[0];
-		stand = new Animation<TextureRegion>(0, regions[0]);
-
-		jump = new Animation<TextureRegion>(0, regions[1]);
-		walk = new Animation<TextureRegion>(0.15f, regions[2], regions[3], regions[4]);
-		walk.setPlayMode(Animation.PlayMode.LOOP_PINGPONG);
 
 		// level = new Level("level1.tmx");
 		// level = new Level("small.tmx");
@@ -351,14 +310,6 @@ public class LibGdxGame extends ApplicationAdapter {
 		// right bounding box edge, otherwise check the ones to the left
 		Rectangle playerRect = new Rectangle();
 		playerRect.set(player.position.x, player.position.y, Player.WIDTH, Player.HEIGHT);
-		int startY, endX, endY;
-		if (player.velocity.x > 0) {
-			endX = (int) (player.position.x + Player.WIDTH + player.velocity.x);
-		} else {
-			endX = (int) (player.position.x + player.velocity.x);
-		}
-		startY = (int) (player.position.y);
-		endY = (int) (player.position.y + Player.HEIGHT);
 
 		playerRect.x += player.velocity.x;
 
@@ -370,7 +321,6 @@ public class LibGdxGame extends ApplicationAdapter {
 		}
 		playerRect.x = player.position.x;
 
-		endX = (int) (player.position.x + Player.WIDTH);
 
 		// ladderTiles = getTiles("ladders", startX, (int) (player.position.y +
 		// player.velocity.y), endX,
@@ -400,12 +350,6 @@ public class LibGdxGame extends ApplicationAdapter {
 					player.velocity.y = -Player.MAX_VELOCITY;
 				}
 			}
-		}
-
-		if (player.velocity.y > 0) {
-			startY = endY = (int) (player.position.y + Player.HEIGHT + player.velocity.y);
-		} else {
-			startY = endY = (int) (player.position.y + player.velocity.y);
 		}
 
 		playerRect.y += player.velocity.y;
@@ -475,13 +419,13 @@ public class LibGdxGame extends ApplicationAdapter {
 		TextureRegion frame = null;
 		switch (player.state) {
 		case Standing:
-			frame = stand.getKeyFrame(player.stateTime);
+			frame = player.stand.getKeyFrame(player.stateTime);
 			break;
 		case Walking:
-			frame = walk.getKeyFrame(player.stateTime);
+			frame = player.walk.getKeyFrame(player.stateTime);
 			break;
 		case Jumping:
-			frame = jump.getKeyFrame(player.stateTime);
+			frame = player.jump.getKeyFrame(player.stateTime);
 			break;
 		}
 
@@ -511,29 +455,29 @@ public class LibGdxGame extends ApplicationAdapter {
 	private void renderGun(float deltaTime, Player player) { // USE THIS IF CAMERA STAYS AT CONSTANT Y
 		batch.begin();
 		if (!player.facesRight) {
-			akSprite.flip(false, true);
+			player.gun.gunSprite.flip(false, true);
 		}
 
 		Vector3 projectedPlayer = camera.project(new Vector3(player.position.x, player.position.y, 0f));
 
-		batch.draw(akSprite, projectedPlayer.x, projectedPlayer.y, 16f, 16f, akSprite.getWidth() / 10,
-				akSprite.getHeight() / 10, 1f, 1f, player.lookAngle);
+		batch.draw(player.gun.gunSprite, projectedPlayer.x, projectedPlayer.y, 16f, 16f, player.gun.gunSprite.getWidth() / 10,
+				player.gun.gunSprite.getHeight() / 10, 1f, 1f, player.lookAngle);
 
 		// draw gun on left
 		float projectedGunLeft = camera.project(new Vector3(
 				camera.unproject(new Vector3((Gdx.graphics.getWidth() / 2) - 18, 0, 0)).x - level.mapWidth, 0, 0)).x;
-		batch.draw(akSprite, projectedGunLeft, projectedPlayer.y, 16f, 16f, akSprite.getWidth() / 10,
-				akSprite.getHeight() / 10, 1f, 1f, player.lookAngle);
+		batch.draw(player.gun.gunSprite, projectedGunLeft, projectedPlayer.y, 16f, 16f, player.gun.gunSprite.getWidth() / 10,
+				player.gun.gunSprite.getHeight() / 10, 1f, 1f, player.lookAngle);
 
 		// draw gun on right
 		float projectedGunRight = camera.project(new Vector3(
 				camera.unproject(new Vector3((Gdx.graphics.getWidth() / 2) - 18, 0, 0)).x + level.mapWidth, 0, 0)).x;
-		batch.draw(akSprite, projectedGunRight, projectedPlayer.y, 16f, 16f, akSprite.getWidth() / 10,
-				akSprite.getHeight() / 10, 1f, 1f, player.lookAngle);
+		batch.draw(player.gun.gunSprite, projectedGunRight, projectedPlayer.y, 16f, 16f, player.gun.gunSprite.getWidth() / 10,
+				player.gun.gunSprite.getHeight() / 10, 1f, 1f, player.lookAngle);
 
 		batch.end();
 		if (!player.facesRight) {
-			akSprite.flip(false, true);
+			player.gun.gunSprite.flip(false, true);
 		}
 	}
 

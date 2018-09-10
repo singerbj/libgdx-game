@@ -27,15 +27,16 @@ public class Level {
 		}
 	};
 	
-	public Level(String mapName) {
+	public Level(String mapName, boolean isServer) {
 		// load the map, set the unit scale to 1/16 (1 unit == 16 pixels)
 		TmxMapLoader.Parameters parameters = new TmxMapLoader.Parameters();
-		parameters.convertObjectToTileSpace = true;	
+		parameters.convertObjectToTileSpace = true;
 		map = new TmxMapLoader().load(mapName, parameters);
 		mapWidth = ((TiledMapTileLayer) map.getLayers().get(0)).getWidth();
 		mapHeight = ((TiledMapTileLayer) map.getLayers().get(0)).getHeight();
-		renderer = new LoopingOrthogonalTiledMapRenderer(map, 1 / 70f);
-		
+		if(!isServer) {
+			renderer = new LoopingOrthogonalTiledMapRenderer(map, 1 / 70f);
+		}
 		for(Rectangle r : getTiles("walls", 0, 0, (int) mapWidth, (int) mapHeight)) {
 			walls.add(new Collidable(r, null));
 		}

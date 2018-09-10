@@ -20,8 +20,7 @@ public class Gun {
 	public long reloadCompleteTime = -99999999;
 	public float reloadPerentage = 0.0f;
 	
-	public Texture gunImage = new Texture("ak47.png");
-	public Sprite gunSprite = new Sprite(gunImage);
+	
 	
 //	Sound sound = Gdx.audio.newSound(Gdx.files.internal("audio/AK47_1.mp3"));
 		

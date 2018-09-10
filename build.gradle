@@ -45,7 +45,8 @@ project(":desktop") {
         compile "com.badlogicgames.gdx:gdx-platform:$gdxVersion:natives-desktop"
         compile "com.badlogicgames.gdx:gdx-box2d-platform:$gdxVersion:natives-desktop"
         compile "com.badlogicgames.gdx:gdx-bullet-platform:$gdxVersion:natives-desktop"
-        compile 'com.badlogicgames.gdx:gdx-backend-headless:1.9.8-SNAPSHOT'
+        compile "com.badlogicgames.gdx:gdx-backend-headless:1.9.8-SNAPSHOT"
+        compile "org.mockito:mockito-core:2.2.7"
         
     }
 }

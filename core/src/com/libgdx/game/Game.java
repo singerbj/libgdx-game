@@ -1,10 +1,12 @@
 package com.libgdx.game;
 
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.HashMap;
 import com.badlogic.gdx.ApplicationAdapter;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Input.Keys;
+import com.badlogic.gdx.graphics.Camera;
 import com.badlogic.gdx.graphics.Color;
 import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.OrthographicCamera;
@@ -25,11 +27,13 @@ import com.badlogic.gdx.utils.TimeUtils;
 import com.libgdx.entities.Level;
 import com.libgdx.entities.Player;
 import com.libgdx.helpers.DebugHelper;
+import com.libgdx.helpers.GameGraphics;
 import com.libgdx.helpers.PlayerState;
 import com.libgdx.helpers.RayCastHelper;
 
-public class LibGdxGame extends ApplicationAdapter {
+public class Game extends ApplicationAdapter {
 	Array<String> args;
+	boolean isServer = false;
 	
 	private Level level;
 	private OrthographicCamera camera;
@@ -40,34 +44,34 @@ public class LibGdxGame extends ApplicationAdapter {
 	private Network network;
 	private Array<Shot> shots;
 	private HashMap<String, Player> players;
-
-	private BitmapFont font;
-	private SpriteBatch batch;
+	
+	GameGraphics gameGraphics;
 
 	private static final float GRAVITY = -45f;
 
 	private boolean debug = true;
 	private Array<Rectangle> debugTiles;
-	private DebugHelper debugHelper;
-	ShapeRenderer shapeRenderer;
+	
 	private RayCastHelper rayCastHelper;
 
 	
 	
-	public LibGdxGame(String[] args) {
+	public Game(String[] args, boolean isServer) {
 		super();
 		this.args = Array.with(args);
+		this.isServer = isServer;
 	}
 
 	@Override
 	public void create() {
+		
 		// network related variables initialized
 		shots = new Array<Shot>();
 		players = new HashMap<String, Player>();
 		player = new Player();
 		players.put(player.id, player);
 		try {
-			network = new Network(args.contains("server", false), player, players, shots);
+			network = new Network(this.isServer, player, players, shots);
 		} catch (IOException e) {
 			System.out.println(e.getMessage());
 			e.printStackTrace();
@@ -76,20 +80,19 @@ public class LibGdxGame extends ApplicationAdapter {
 
 		// level = new Level("level1.tmx");
 		// level = new Level("small.tmx");
-		level = new Level("kenney.tmx");
+		level = new Level("kenney.tmx", this.isServer);
 
 		// create an orthographic camera
 		camera = new OrthographicCamera();
 		camera.setToOrtho(false, 1920 / 25f, 1080 / 25f);
 		camera.update();
 
-		font = new BitmapFont();
-		batch = new SpriteBatch();
-
 		rayCastHelper = new RayCastHelper();
-		shapeRenderer = new ShapeRenderer();
 		debugTiles = new Array<Rectangle>();
-		debugHelper = new DebugHelper(shapeRenderer, camera, debugTiles, player, level);
+		
+		if(!this.isServer) {
+			gameGraphics = new GameGraphics(camera, debugTiles, player, level);
+		}
 
 		// Cursor customCursor = Gdx.graphics.newCursor(new
 		// Pixmap(Gdx.files.internal("cursor.png")), 0, 0);
@@ -99,16 +102,15 @@ public class LibGdxGame extends ApplicationAdapter {
 	@Override
 	public void render() {
 		// clear the screen
-		Gdx.gl.glClearColor(0.7f, 0.7f, 1.0f, 1);
-		Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
-		Gdx.gl.glEnable(GL20.GL_BLEND);
-		Gdx.gl.glBlendFunc(GL20.GL_SRC_ALPHA, GL20.GL_ONE_MINUS_SRC_ALPHA);
+		if(!this.isServer) {
+			Gdx.gl.glClearColor(0.7f, 0.7f, 1.0f, 1);
+			Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
+			Gdx.gl.glEnable(GL20.GL_BLEND);
+			Gdx.gl.glBlendFunc(GL20.GL_SRC_ALPHA, GL20.GL_ONE_MINUS_SRC_ALPHA);
+		}
 
 		// get the delta time
 		float deltaTime = Gdx.graphics.getDeltaTime();
-
-		// set projection matrix whatever that is
-		shapeRenderer.setProjectionMatrix(camera.combined);
 
 		// handle non player inputs
 		handleNonPlayerInputs();
@@ -122,35 +124,39 @@ public class LibGdxGame extends ApplicationAdapter {
 			camera.position.y = player.position.y + (Player.HEIGHT / 2);
 			camera.update();
 
-			// set the TiledMapRenderer view based on what the
-			// camera sees, and render the map
-			level.renderer.setView(camera);
-			level.renderer.render();
-
-			// render the player
-			renderPlayers(deltaTime);
-
-			// render the crosshair
-			renderCrosshair(deltaTime);
+			if(!this.isServer) {
+				// set the TiledMapRenderer view based on what the
+				// camera sees, and render the map
+				level.renderer.setView(camera);
+				level.renderer.render();
 			
-			// render the hud
-			renderHud(deltaTime);
-			
-			// render debug shapes
-			if (debug) {
-				debugHelper.renderDebug();
-				batch.begin();
-				font.draw(batch, (int) Gdx.graphics.getFramesPerSecond() + " fps", 3, Gdx.graphics.getHeight() - 3);
-				batch.end();
+				// render the player
+				gameGraphics.renderPlayers(deltaTime, camera, level, player, players);
+	
+				// render the crosshair
+				gameGraphics.renderCrosshair(deltaTime, camera);
+				
+				// render the shots
+				gameGraphics.renderShots(deltaTime, level, shots);
+				
+				// render the hud
+				gameGraphics.renderHud(deltaTime, player);
 			}
-			
-			if(network.server != null) {
-				network.sendWorldData(players);
-			} else {
-				network.sendPlayerData(player);
-			}
-			
 		}
+			
+		// render debug shapes
+		if (debug) {
+			if(!this.isServer) {
+				gameGraphics.renderDebug();
+			}
+		}
+		
+		if(network.server != null) {
+			network.sendWorldData(players);
+		} else {
+			network.sendPlayerData(player);
+		}
+		
 	}
 
 	private void handleNonPlayerInputs() {
@@ -191,14 +197,7 @@ public class LibGdxGame extends ApplicationAdapter {
 
 		for (Shot shot : shots) {
 			if (shot.getAlphaModifier() > 0f) {
-				shot.setAlphaModifier(shot.getAlphaModifier() - 0.03f);
-				shapeRenderer.begin(ShapeType.Line);
-				for (float i = -(level.mapWidth * 2); i <= (level.mapWidth * 2); i += level.mapWidth) {
-					shapeRenderer.line(shot.getSource().x + i, shot.getSource().y, shot.getDest().x + i,
-							shot.getDest().y, new Color(255f, 255f, 255f, 0.0f),
-							new Color(255f, 255f, 255f, shot.getAlphaModifier()));
-				}
-				shapeRenderer.end();
+				shot.setAlphaModifier(shot.getAlphaModifier() - 0.03f);				
 			}
 		}
 
@@ -243,14 +242,8 @@ public class LibGdxGame extends ApplicationAdapter {
 
 			if (shot != null) {
 				shots.add(shot);
-				shapeRenderer.begin(ShapeType.Line);
-				for (float i = -(level.mapWidth * 2); i <= (level.mapWidth * 2); i += level.mapWidth) {
-					shapeRenderer.line(shot.getSource().x + i, shot.getSource().y, shot.getDest().x + i,
-							shot.getDest().y, new Color(255f, 255f, 255f, 0.0f),
-							new Color(255f, 255f, 255f, shot.getAlphaModifier()));
-				}
+				
 			}
-			shapeRenderer.end();
 
 		}
 
@@ -400,103 +393,7 @@ public class LibGdxGame extends ApplicationAdapter {
 		return collidables;
 	}
 
-	private void renderPlayers(float deltaTime) {
-		renderPlayer(deltaTime, player);
-		renderGun(deltaTime, player);
-		Player otherPlayer;
-		for(String key : players.keySet()) {
-			otherPlayer = players.get(key);
-			if(otherPlayer.id != player.id) {
-				otherPlayer.updateLeftRightPositions(level.mapWidth);
-				renderPlayer(deltaTime, otherPlayer);
-				renderGun(deltaTime, otherPlayer);
-			}
-		}
-	}
-
-	private void renderPlayer(float deltaTime, Player player) {
-		// based on the player state, get the animation frame
-		TextureRegion frame = null;
-		switch (player.state) {
-		case Standing:
-			frame = player.stand.getKeyFrame(player.stateTime);
-			break;
-		case Walking:
-			frame = player.walk.getKeyFrame(player.stateTime);
-			break;
-		case Jumping:
-			frame = player.jump.getKeyFrame(player.stateTime);
-			break;
-		}
-
-		// draw the player, depending on the current velocity
-		// on the x-axis, draw the player facing either right
-		// or left
-		Batch rendererBatch = level.renderer.getBatch();
-		rendererBatch.begin();
-
-		if (camera.unproject(new Vector3(Gdx.input.getX(), 0, 0)).x > player.position.x) {
-			player.facesRight = true;
-			rendererBatch.draw(frame, player.position.x, player.position.y, Player.WIDTH, Player.HEIGHT);
-			rendererBatch.draw(frame, player.leftPosition.x, player.position.y, Player.WIDTH, Player.HEIGHT);
-			rendererBatch.draw(frame, player.rightPosition.x, player.position.y, Player.WIDTH, Player.HEIGHT);
-		} else {
-			player.facesRight = false;
-			rendererBatch.draw(frame, player.position.x + Player.WIDTH, player.position.y, -Player.WIDTH,
-					Player.HEIGHT);
-			rendererBatch.draw(frame, player.leftPosition.x + Player.WIDTH, player.position.y, -Player.WIDTH,
-					Player.HEIGHT);
-			rendererBatch.draw(frame, player.rightPosition.x + Player.WIDTH, player.position.y, -Player.WIDTH,
-					Player.HEIGHT);
-		}
-		rendererBatch.end();
-	}
 	
-	private void renderGun(float deltaTime, Player player) { // USE THIS IF CAMERA STAYS AT CONSTANT Y
-		batch.begin();
-		if (!player.facesRight) {
-			player.gun.gunSprite.flip(false, true);
-		}
-
-		Vector3 projectedPlayer = camera.project(new Vector3(player.position.x, player.position.y, 0f));
-
-		batch.draw(player.gun.gunSprite, projectedPlayer.x, projectedPlayer.y, 16f, 16f, player.gun.gunSprite.getWidth() / 10,
-				player.gun.gunSprite.getHeight() / 10, 1f, 1f, player.lookAngle);
-
-		// draw gun on left
-		float projectedGunLeft = camera.project(new Vector3(
-				camera.unproject(new Vector3((Gdx.graphics.getWidth() / 2) - 18, 0, 0)).x - level.mapWidth, 0, 0)).x;
-		batch.draw(player.gun.gunSprite, projectedGunLeft, projectedPlayer.y, 16f, 16f, player.gun.gunSprite.getWidth() / 10,
-				player.gun.gunSprite.getHeight() / 10, 1f, 1f, player.lookAngle);
-
-		// draw gun on right
-		float projectedGunRight = camera.project(new Vector3(
-				camera.unproject(new Vector3((Gdx.graphics.getWidth() / 2) - 18, 0, 0)).x + level.mapWidth, 0, 0)).x;
-		batch.draw(player.gun.gunSprite, projectedGunRight, projectedPlayer.y, 16f, 16f, player.gun.gunSprite.getWidth() / 10,
-				player.gun.gunSprite.getHeight() / 10, 1f, 1f, player.lookAngle);
-
-		batch.end();
-		if (!player.facesRight) {
-			player.gun.gunSprite.flip(false, true);
-		}
-	}
-
-	private void renderCrosshair(float deltaTime) {
-		// Gdx.input.setCursorCatched(true);
-		shapeRenderer.begin(ShapeType.Line);
-		shapeRenderer.setColor(Color.RED);
-		Vector3 literalDest = new Vector3(Gdx.input.getX(), Gdx.input.getY(), 0);
-		camera.unproject(literalDest);
-		shapeRenderer.line(literalDest.x + 0.5f, literalDest.y, literalDest.x - 0.5f, literalDest.y);
-		shapeRenderer.line(literalDest.x, literalDest.y + 0.5f, literalDest.x, literalDest.y - 0.5f);
-		shapeRenderer.end();
-	}
-	
-	private void renderHud(float deltaTime) {
-		batch.begin();
-		font.draw(batch, "Health: " + (player.health / Player.MAX_HEALTH) * 100, 3, Gdx.graphics.getHeight() - 20);
-		batch.end();
-	}
 
 	@Override
 	public void dispose() {

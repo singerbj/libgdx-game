@@ -124,7 +124,7 @@ public class Game extends ApplicationAdapter {
 			camera.position.y = player.position.y + (Player.HEIGHT / 2);
 			camera.update();
 
-			if(!this.isServer) {
+			if(!this.isServer) {		
 				// set the TiledMapRenderer view based on what the
 				// camera sees, and render the map
 				level.renderer.setView(camera);
@@ -137,17 +137,17 @@ public class Game extends ApplicationAdapter {
 				gameGraphics.renderCrosshair(deltaTime, camera);
 				
 				// render the shots
-				gameGraphics.renderShots(deltaTime, level, shots);
+				gameGraphics.renderShots(deltaTime, camera, level, shots);
 				
 				// render the hud
-				gameGraphics.renderHud(deltaTime, player);
+				gameGraphics.renderHud(deltaTime, camera, player);
 			}
 		}
 			
 		// render debug shapes
 		if (debug) {
 			if(!this.isServer) {
-				gameGraphics.renderDebug();
+				gameGraphics.renderDebug(deltaTime, camera);
 			}
 		}
 		

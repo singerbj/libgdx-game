@@ -40,11 +40,11 @@ public class GameGraphics {
 	public GameGraphics(OrthographicCamera camera, Array<Rectangle> debugTiles, Player player, Level level) {
 		walk.setPlayMode(Animation.PlayMode.LOOP_PINGPONG);
 		shapeRenderer = new ShapeRenderer();
-		shapeRenderer.setProjectionMatrix(camera.combined);
 		debugHelper = new DebugHelper(shapeRenderer, camera, debugTiles, player, level);
 	}
 	
 	public void renderPlayers(float deltaTime, Camera camera, Level level, Player player, HashMap<String, Player> players) {
+		shapeRenderer.setProjectionMatrix(camera.combined);
 		renderPlayer(deltaTime, camera, level, player);
 		renderGun(deltaTime, camera, level, player);
 		Player otherPlayer;
@@ -59,6 +59,7 @@ public class GameGraphics {
 	}
 	
 	public void renderPlayer(float deltaTime, Camera camera, Level level, Player player) {
+		shapeRenderer.setProjectionMatrix(camera.combined);
 		// based on the player state, get the animation frame
 		TextureRegion frame = null;
 		switch (player.state) {
@@ -97,6 +98,7 @@ public class GameGraphics {
 	}
 	
 	public void renderGun(float deltaTime, Camera camera, Level level, Player player) { // USE THIS IF CAMERA STAYS AT CONSTANT Y
+		shapeRenderer.setProjectionMatrix(camera.combined);
 		Batch batch = level.renderer.getBatch();
 		batch.begin();
 		if (!player.facesRight) {
@@ -126,7 +128,8 @@ public class GameGraphics {
 		}
 	}
 	
-	public void renderShots(float deltaTime, Level level, Array<Shot> shots) {
+	public void renderShots(float deltaTime, Camera camera, Level level, Array<Shot> shots) {
+		shapeRenderer.setProjectionMatrix(camera.combined);
 		shapeRenderer.begin(ShapeType.Line);
 		for(Shot shot : shots) {
 			for (float i = -(level.mapWidth * 2); i <= (level.mapWidth * 2); i += level.mapWidth) {
@@ -138,7 +141,8 @@ public class GameGraphics {
 		shapeRenderer.end();
 	}
 	
-	public void renderCrosshair(float deltaTime, OrthographicCamera camera) {
+	public void renderCrosshair(float deltaTime, Camera camera) {
+		shapeRenderer.setProjectionMatrix(camera.combined);
 		// Gdx.input.setCursorCatched(true);
 		shapeRenderer.begin(ShapeType.Line);
 		shapeRenderer.setColor(Color.RED);
@@ -149,13 +153,15 @@ public class GameGraphics {
 		shapeRenderer.end();
 	}
 	
-	public void renderHud(float deltaTime, Player player) {
+	public void renderHud(float deltaTime, Camera camera, Player player) {
+		shapeRenderer.setProjectionMatrix(camera.combined);
 		batch.begin();
 		font.draw(batch, "Health: " + (player.health / Player.MAX_HEALTH) * 100, 3, Gdx.graphics.getHeight() - 20);
 		batch.end();
 	}
 	
-	public void renderDebug() {
+	public void renderDebug(float deltaTime, Camera camera) {
+		shapeRenderer.setProjectionMatrix(camera.combined);
 		batch.begin();
 		font.draw(batch, (int) Gdx.graphics.getFramesPerSecond() + " fps", 3, Gdx.graphics.getHeight() - 3);
 		batch.end();
